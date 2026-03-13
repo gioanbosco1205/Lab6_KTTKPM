@@ -1,0 +1,147 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "PolicyService/1.0.0": {
+        "dependencies": {
+          "Microsoft.AspNetCore.OpenApi": "10.0.2",
+          "Steeltoe.Discovery.ClientCore": "2.1.1"
+        },
+        "runtime": {
+          "PolicyService.dll": {}
+        }
+      },
+      "Microsoft.AspNetCore.OpenApi/10.0.2": {
+        "dependencies": {
+          "Microsoft.OpenApi": "2.0.0"
+        },
+        "runtime": {
+          "lib/net10.0/Microsoft.AspNetCore.OpenApi.dll": {
+            "assemblyVersion": "10.0.2.0",
+            "fileVersion": "10.0.225.61305"
+          }
+        }
+      },
+      "Microsoft.OpenApi/2.0.0": {
+        "runtime": {
+          "lib/net8.0/Microsoft.OpenApi.dll": {
+            "assemblyVersion": "2.0.0.0",
+            "fileVersion": "2.0.0.0"
+          }
+        }
+      },
+      "Newtonsoft.Json/11.0.2": {
+        "runtime": {
+          "lib/netstandard2.0/Newtonsoft.Json.dll": {
+            "assemblyVersion": "11.0.0.0",
+            "fileVersion": "11.0.2.21924"
+          }
+        }
+      },
+      "Steeltoe.Common/2.1.1": {
+        "runtime": {
+          "lib/netstandard2.0/Steeltoe.Common.dll": {
+            "assemblyVersion": "2.1.1.0",
+            "fileVersion": "2.1.1.0"
+          }
+        }
+      },
+      "Steeltoe.Common.Http/2.1.1": {
+        "dependencies": {
+          "Newtonsoft.Json": "11.0.2",
+          "Steeltoe.Common": "2.1.1"
+        },
+        "runtime": {
+          "lib/netstandard2.0/Steeltoe.Common.Http.dll": {
+            "assemblyVersion": "2.1.1.0",
+            "fileVersion": "2.1.1.0"
+          }
+        }
+      },
+      "Steeltoe.Discovery.ClientCore/2.1.1": {
+        "dependencies": {
+          "Steeltoe.Common": "2.1.1",
+          "Steeltoe.Discovery.EurekaBase": "2.1.1"
+        },
+        "runtime": {
+          "lib/netstandard2.0/Steeltoe.Discovery.ClientCore.dll": {
+            "assemblyVersion": "2.1.1.0",
+            "fileVersion": "2.1.1.0"
+          }
+        }
+      },
+      "Steeltoe.Discovery.EurekaBase/2.1.1": {
+        "dependencies": {
+          "Newtonsoft.Json": "11.0.2",
+          "Steeltoe.Common.Http": "2.1.1"
+        },
+        "runtime": {
+          "lib/netstandard2.0/Steeltoe.Discovery.EurekaBase.dll": {
+            "assemblyVersion": "2.1.1.0",
+            "fileVersion": "2.1.1.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "PolicyService/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Microsoft.AspNetCore.OpenApi/10.0.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-YuEjUNpsoZLs0I5ONt013Z+Udsz3f9sPUh1Xm59LN7+/Z8oVG/swCUYLBbANtfreiunWnoT2uk+5kst4s2jr3Q==",
+      "path": "microsoft.aspnetcore.openapi/10.0.2",
+      "hashPath": "microsoft.aspnetcore.openapi.10.0.2.nupkg.sha512"
+    },
+    "Microsoft.OpenApi/2.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-GGYLfzV/G/ct80OZ45JxnWP7NvMX1BCugn/lX7TH5o0lcVaviavsLMTxmFV2AybXWjbi3h6FF1vgZiTK6PXndw==",
+      "path": "microsoft.openapi/2.0.0",
+      "hashPath": "microsoft.openapi.2.0.0.nupkg.sha512"
+    },
+    "Newtonsoft.Json/11.0.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-IvJe1pj7JHEsP8B8J8DwlMEx8UInrs/x+9oVY+oCD13jpLu4JbJU2WCIsMRn5C4yW9+DgkaO8uiVE5VHKjpmdQ==",
+      "path": "newtonsoft.json/11.0.2",
+      "hashPath": "newtonsoft.json.11.0.2.nupkg.sha512"
+    },
+    "Steeltoe.Common/2.1.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-hMllH2KEDgsVkM66yBbMS74LJJuNMc7OdPfTzvVaPrzL9uk5yk+8lutTuQ3v2/N43HCz9Q2ofIXbiBAwyJaEzA==",
+      "path": "steeltoe.common/2.1.1",
+      "hashPath": "steeltoe.common.2.1.1.nupkg.sha512"
+    },
+    "Steeltoe.Common.Http/2.1.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-OstZoAowpj+OMwoda8+qB2A5HNq/1Oco4MUUMrSyRw3mO4OHZdjeQ0racBA7HxeTPple4PqHIEzKNCCwDXr69g==",
+      "path": "steeltoe.common.http/2.1.1",
+      "hashPath": "steeltoe.common.http.2.1.1.nupkg.sha512"
+    },
+    "Steeltoe.Discovery.ClientCore/2.1.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-EurinJievi7Wyd6p9CYFP0fHJByPTe6zO0hEj98j+pbpa+L6rKRrhpWQlK4KYsxXJqKiEV5Nu8sxyw9ZSTHJUg==",
+      "path": "steeltoe.discovery.clientcore/2.1.1",
+      "hashPath": "steeltoe.discovery.clientcore.2.1.1.nupkg.sha512"
+    },
+    "Steeltoe.Discovery.EurekaBase/2.1.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-3V1L91paCUdhmnriVrTxwR9UhgmJEvml1uv0IMSRaG6Amn36RqJ0bkrEnRGGeLV+1aPw6FbqDJJZ5gYbnOd3DA==",
+      "path": "steeltoe.discovery.eurekabase/2.1.1",
+      "hashPath": "steeltoe.discovery.eurekabase.2.1.1.nupkg.sha512"
+    }
+  }
+}

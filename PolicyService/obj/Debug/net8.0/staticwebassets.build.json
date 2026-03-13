@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "KwX7rrNQwE/CbMNE79kuzcJDuL2FZIvpMfXsMEqrHhA=",
+  "Source": "PolicyService",
+  "BasePath": "_content/PolicyService",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}

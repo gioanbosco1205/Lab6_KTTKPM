@@ -1,0 +1,35 @@
+{
+  "Routes": [
+    {
+      "DownstreamPathTemplate": "/api/pricing",
+      "DownstreamScheme": "http",
+      "ServiceName": "PRICINGSERVICE",
+      "UpstreamPathTemplate": "/pricing",
+      "UpstreamHttpMethod": [ "Get" ],
+
+      "FileCacheOptions": {
+        "TtlSeconds": 15
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/policy",
+      "DownstreamScheme": "http",
+      "ServiceName": "POLICYSERVICE",
+      "UpstreamPathTemplate": "/policy",
+      "UpstreamHttpMethod": [ "Get" ],
+
+      "FileCacheOptions": {
+        "TtlSeconds": 15
+      }
+    }
+  ],
+
+  "GlobalConfiguration": {
+    "ServiceDiscoveryProvider": {
+      "Type": "Eureka",
+      "Host": "eureka",
+      "Port": 8761
+    },
+    "BaseUrl": "http://localhost:5050"
+  }
+}
