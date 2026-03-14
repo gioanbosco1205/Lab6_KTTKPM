@@ -4242,11 +4242,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/minhkhanhnguyen/Downloads/Lab3_NguyenMinhKhanh_2324802010252/PricingService/PricingService.csproj",
+      "projectUniqueName": "/Users/minhkhanhnguyen/Downloads/KTTKPM/PricingService/PricingService.csproj",
       "projectName": "PricingService",
-      "projectPath": "/Users/minhkhanhnguyen/Downloads/Lab3_NguyenMinhKhanh_2324802010252/PricingService/PricingService.csproj",
+      "projectPath": "/Users/minhkhanhnguyen/Downloads/KTTKPM/PricingService/PricingService.csproj",
       "packagesPath": "/Users/minhkhanhnguyen/.nuget/packages/",
-      "outputPath": "/Users/minhkhanhnguyen/Downloads/Lab3_NguyenMinhKhanh_2324802010252/PricingService/obj/",
+      "outputPath": "/Users/minhkhanhnguyen/Downloads/KTTKPM/PricingService/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "/Users/minhkhanhnguyen/.nuget/NuGet/NuGet.Config"

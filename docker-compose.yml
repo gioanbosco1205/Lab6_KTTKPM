@@ -5,6 +5,13 @@ services:
     ports:
       - "8761:8761"
 
+  authservice:
+    build: ./AuthService
+    container_name: auth-service
+    ports:
+      - "5060:8080"
+    restart: always
+
   pricingservice:
     build: ./PricingService
     container_name: pricing-service
@@ -36,6 +43,7 @@ services:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka/
     depends_on:
       - eureka
+      - authservice
       - pricingservice
       - policyservice
     restart: always

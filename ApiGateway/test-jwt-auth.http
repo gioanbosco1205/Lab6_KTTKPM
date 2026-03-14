@@ -1,0 +1,58 @@
+### JWT Authentication Test cho API Gateway
+
+### Bước 1: Lấy JWT Token từ Auth Service
+POST http://localhost:5050/auth/generate-token
+Content-Type: application/json
+
+{
+  "username": "testuser"
+}
+
+### Bước 2: Login với credentials
+POST http://localhost:5050/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "password"
+}
+
+### Bước 3: Test endpoint KHÔNG có token (sẽ trả về 401 Unauthorized)
+GET http://localhost:5050/pricing
+
+### Bước 4: Test endpoint CÓ token (thay YOUR_JWT_TOKEN bằng token từ bước 1 hoặc 2)
+GET http://localhost:5050/pricing
+Authorization: Bearer YOUR_JWT_TOKEN
+
+### Bước 5: Test POST endpoint với token
+POST http://localhost:5050/pricing
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "basePrice": 1000,
+  "quantity": 5,
+  "taxRate": 0.1
+}
+
+### Bước 6: Test GET by ID với token
+GET http://localhost:5050/pricing/123
+Authorization: Bearer YOUR_JWT_TOKEN
+
+### Bước 7: Test PUT với token
+PUT http://localhost:5050/pricing/123
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "oldPrice": 1500,
+  "newPrice": 1800
+}
+
+### Bước 8: Test DELETE với token
+DELETE http://localhost:5050/pricing/123
+Authorization: Bearer YOUR_JWT_TOKEN
+
+### Bước 9: Test Policy endpoint với token
+GET http://localhost:5050/policy
+Authorization: Bearer YOUR_JWT_TOKEN

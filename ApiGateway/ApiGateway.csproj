@@ -10,6 +10,7 @@
     <PackageReference Include="Ocelot" Version="24.1.0" />
     <PackageReference Include="Ocelot.Cache.CacheManager" Version="24.1.0" />
     <PackageReference Include="Ocelot.Provider.Eureka" Version="24.1.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
   </ItemGroup>
 
 </Project>

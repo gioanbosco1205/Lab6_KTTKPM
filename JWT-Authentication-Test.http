@@ -1,0 +1,118 @@
+### JWT Authentication Test - Kiểm tra toàn bộ flow
+
+### ========================================
+### BƯỚC 1: Test AuthService trực tiếp
+### ========================================
+
+### 1.1. Test AuthService - Generate Token
+POST http://localhost:5060/api/auth/generate-token
+Content-Type: application/json
+
+{
+  "username": "testuser"
+}
+
+### 1.2. Test AuthService - Login
+POST http://localhost:5060/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "password"
+}
+
+### ========================================
+### BƯỚC 2: Test qua API Gateway
+### ========================================
+
+### 2.1. Test API Gateway - Generate Token (qua routing)
+POST http://localhost:5050/auth/generate-token
+Content-Type: application/json
+
+{
+  "username": "testuser"
+}
+
+### 2.2. Test API Gateway - Login (qua routing)
+POST http://localhost:5050/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "password"
+}
+
+### ========================================
+### BƯỚC 3: Test Protected Endpoints KHÔNG có token (phải lỗi 401)
+### ========================================
+
+### 3.1. Test Pricing - GET (không có token)
+GET http://localhost:5050/pricing
+
+### 3.2. Test Pricing - GET by ID (không có token)
+GET http://localhost:5050/pricing/123
+
+### 3.3. Test Policy (không có token)
+GET http://localhost:5050/policy
+
+### ========================================
+### BƯỚC 4: Test Protected Endpoints CÓ token (phải thành công)
+### ========================================
+### LƯU Ý: Thay YOUR_JWT_TOKEN bằng token từ bước 2.1 hoặc 2.2
+
+### 4.1. Test Pricing - GET (có token)
+GET http://localhost:5050/pricing
+Authorization: Bearer YOUR_JWT_TOKEN
+
+### 4.2. Test Pricing - GET by ID (có token)
+GET http://localhost:5050/pricing/123
+Authorization: Bearer YOUR_JWT_TOKEN
+
+### 4.3. Test Pricing - POST (có token)
+POST http://localhost:5050/pricing
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "basePrice": 1000,
+  "quantity": 5,
+  "taxRate": 0.1
+}
+
+### 4.4. Test Pricing - PUT (có token)
+PUT http://localhost:5050/pricing/123
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "oldPrice": 1500,
+  "newPrice": 1800
+}
+
+### 4.5. Test Pricing - DELETE (có token)
+DELETE http://localhost:5050/pricing/123
+Authorization: Bearer YOUR_JWT_TOKEN
+
+### 4.6. Test Policy (có token)
+GET http://localhost:5050/policy
+Authorization: Bearer YOUR_JWT_TOKEN
+
+### ========================================
+### BƯỚC 5: Test với token không hợp lệ (phải lỗi 401)
+### ========================================
+
+### 5.1. Test với token giả
+GET http://localhost:5050/pricing
+Authorization: Bearer invalid_token_here
+
+### 5.2. Test với token hết hạn (nếu có)
+GET http://localhost:5050/pricing
+Authorization: Bearer expired_token_here
+
+### ========================================
+### EXPECTED RESULTS
+### ========================================
+### Bước 1-2: Trả về token và thông tin user
+### Bước 3: Tất cả phải trả về 401 Unauthorized
+### Bước 4: Tất cả phải trả về 200 OK với data
+### Bước 5: Tất cả phải trả về 401 Unauthorized

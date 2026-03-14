@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "dgSpecHash": "fdxsQg80zcA=",
+  "success": true,
+  "projectFilePath": "/Users/minhkhanhnguyen/Downloads/KTTKPM/AuthService/AuthService.csproj",
+  "expectedPackageFiles": [
+    "/Users/minhkhanhnguyen/.nuget/packages/microsoft.aspnetcore.authentication.jwtbearer/8.0.0/microsoft.aspnetcore.authentication.jwtbearer.8.0.0.nupkg.sha512",
+    "/Users/minhkhanhnguyen/.nuget/packages/microsoft.identitymodel.abstractions/8.0.0/microsoft.identitymodel.abstractions.8.0.0.nupkg.sha512",
+    "/Users/minhkhanhnguyen/.nuget/packages/microsoft.identitymodel.jsonwebtokens/8.0.0/microsoft.identitymodel.jsonwebtokens.8.0.0.nupkg.sha512",
+    "/Users/minhkhanhnguyen/.nuget/packages/microsoft.identitymodel.logging/8.0.0/microsoft.identitymodel.logging.8.0.0.nupkg.sha512",
+    "/Users/minhkhanhnguyen/.nuget/packages/microsoft.identitymodel.protocols/7.0.3/microsoft.identitymodel.protocols.7.0.3.nupkg.sha512",
+    "/Users/minhkhanhnguyen/.nuget/packages/microsoft.identitymodel.protocols.openidconnect/7.0.3/microsoft.identitymodel.protocols.openidconnect.7.0.3.nupkg.sha512",
+    "/Users/minhkhanhnguyen/.nuget/packages/microsoft.identitymodel.tokens/8.0.0/microsoft.identitymodel.tokens.8.0.0.nupkg.sha512",
+    "/Users/minhkhanhnguyen/.nuget/packages/system.identitymodel.tokens.jwt/8.0.0/system.identitymodel.tokens.jwt.8.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}

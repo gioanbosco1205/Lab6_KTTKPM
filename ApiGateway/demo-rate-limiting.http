@@ -1,0 +1,61 @@
+### Demo Rate Limiting - Test nhanh
+
+### Bước 1: Lấy JWT Token
+POST http://localhost:5050/auth/generate-token
+Content-Type: application/json
+ClientId: demo-client
+
+{
+  "username": "testuser"
+}
+
+### Bước 2: Test Rate Limiting cho Pricing GET (5/giây)
+### Chạy 6 requests liên tiếp - request thứ 6 sẽ bị rate limited
+
+### Request 1
+GET http://localhost:5050/pricing
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: demo-pricing
+
+### Request 2  
+GET http://localhost:5050/pricing
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: demo-pricing
+
+### Request 3
+GET http://localhost:5050/pricing
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: demo-pricing
+
+### Request 4
+GET http://localhost:5050/pricing
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: demo-pricing
+
+### Request 5
+GET http://localhost:5050/pricing
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: demo-pricing
+
+### Request 6 - SẼ BỊ RATE LIMITED (429)
+GET http://localhost:5050/pricing
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: demo-pricing
+
+### Bước 3: Test Rate Limiting cho Policy GET (2/giây)
+### Chạy 3 requests liên tiếp - request thứ 3 sẽ bị rate limited
+
+### Request 1
+GET http://localhost:5050/policy
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: demo-policy
+
+### Request 2
+GET http://localhost:5050/policy
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: demo-policy
+
+### Request 3 - SẼ BỊ RATE LIMITED (429)
+GET http://localhost:5050/policy
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: demo-policy

@@ -1,0 +1,167 @@
+### Test Rate Limiting cho các routes khác nhau
+
+### ========================================
+### BƯỚC 1: Lấy JWT Token trước
+### ========================================
+
+### 1.1. Generate Token (Rate limit: 10/phút)
+POST http://localhost:5050/auth/generate-token
+Content-Type: application/json
+ClientId: test-client-1
+
+{
+  "username": "testuser"
+}
+
+### ========================================
+### BƯỚC 2: Test Rate Limiting cho Auth Routes
+### ========================================
+
+### 2.1. Test Auth - Request 1 (should work)
+POST http://localhost:5050/auth/generate-token
+Content-Type: application/json
+ClientId: test-client-auth
+
+{
+  "username": "testuser1"
+}
+
+### 2.2. Test Auth - Request 2 (should work)
+POST http://localhost:5050/auth/generate-token
+Content-Type: application/json
+ClientId: test-client-auth
+
+{
+  "username": "testuser2"
+}
+
+### 2.3. Test Auth - Request 3 (should work)
+POST http://localhost:5050/auth/generate-token
+Content-Type: application/json
+ClientId: test-client-auth
+
+{
+  "username": "testuser3"
+}
+
+### ========================================
+### BƯỚC 3: Test Rate Limiting cho Pricing GET (5/giây)
+### ========================================
+### LƯU Ý: Thay YOUR_JWT_TOKEN bằng token từ bước 1.1
+
+### 3.1. Pricing GET - Request 1 (should work)
+GET http://localhost:5050/pricing
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: test-client-pricing
+
+### 3.2. Pricing GET - Request 2 (should work)
+GET http://localhost:5050/pricing
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: test-client-pricing
+
+### 3.3. Pricing GET - Request 3 (should work)
+GET http://localhost:5050/pricing
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: test-client-pricing
+
+### 3.4. Pricing GET - Request 4 (should work)
+GET http://localhost:5050/pricing
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: test-client-pricing
+
+### 3.5. Pricing GET - Request 5 (should work)
+GET http://localhost:5050/pricing
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: test-client-pricing
+
+### 3.6. Pricing GET - Request 6 (should be rate limited - 429)
+GET http://localhost:5050/pricing
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: test-client-pricing
+
+### ========================================
+### BƯỚC 4: Test Rate Limiting cho Pricing GET by ID (3/giây)
+### ========================================
+
+### 4.1. Pricing GET by ID - Request 1 (should work)
+GET http://localhost:5050/pricing/123
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: test-client-pricing-id
+
+### 4.2. Pricing GET by ID - Request 2 (should work)
+GET http://localhost:5050/pricing/456
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: test-client-pricing-id
+
+### 4.3. Pricing GET by ID - Request 3 (should work)
+GET http://localhost:5050/pricing/789
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: test-client-pricing-id
+
+### 4.4. Pricing GET by ID - Request 4 (should be rate limited - 429)
+GET http://localhost:5050/pricing/999
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: test-client-pricing-id
+
+### ========================================
+### BƯỚC 5: Test Rate Limiting cho Policy (2/giây)
+### ========================================
+
+### 5.1. Policy - Request 1 (should work)
+GET http://localhost:5050/policy
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: test-client-policy
+
+### 5.2. Policy - Request 2 (should work)
+GET http://localhost:5050/policy
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: test-client-policy
+
+### 5.3. Policy - Request 3 (should be rate limited - 429)
+GET http://localhost:5050/policy
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: test-client-policy
+
+### ========================================
+### BƯỚC 6: Test Rate Limiting cho POST/PUT/DELETE (limits khác nhau)
+### ========================================
+
+### 6.1. POST Pricing (20/phút)
+POST http://localhost:5050/pricing
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: test-client-post
+Content-Type: application/json
+
+{
+  "basePrice": 1000,
+  "quantity": 5,
+  "taxRate": 0.1
+}
+
+### 6.2. PUT Pricing (15/phút)
+PUT http://localhost:5050/pricing/123
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: test-client-put
+Content-Type: application/json
+
+{
+  "oldPrice": 1500,
+  "newPrice": 1800
+}
+
+### 6.3. DELETE Pricing (5/phút - strict limit)
+DELETE http://localhost:5050/pricing/123
+Authorization: Bearer YOUR_JWT_TOKEN
+ClientId: test-client-delete
+
+### ========================================
+### EXPECTED RESULTS
+### ========================================
+### - Auth routes: 10 requests/phút
+### - Pricing GET: 5 requests/giây
+### - Pricing GET by ID: 3 requests/giây  
+### - Policy GET: 2 requests/giây
+### - Pricing POST: 20 requests/phút
+### - Pricing PUT: 15 requests/phút
+### - Pricing DELETE: 5 requests/phút
+### - Rate limit exceeded: 429 status với message custom

@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "2+OxBlqROSI=",
+  "dgSpecHash": "A+tfUkufGCY=",
   "success": true,
-  "projectFilePath": "/Users/minhkhanhnguyen/Downloads/Lab3_NguyenMinhKhanh_2324802010252/PricingService/PricingService.csproj",
+  "projectFilePath": "/Users/minhkhanhnguyen/Downloads/KTTKPM/PricingService/PricingService.csproj",
   "expectedPackageFiles": [
     "/Users/minhkhanhnguyen/.nuget/packages/microsoft.aspnetcore.diagnostics.healthchecks/2.2.0/microsoft.aspnetcore.diagnostics.healthchecks.2.2.0.nupkg.sha512",
     "/Users/minhkhanhnguyen/.nuget/packages/microsoft.aspnetcore.hosting.abstractions/2.0.0/microsoft.aspnetcore.hosting.abstractions.2.0.0.nupkg.sha512",
