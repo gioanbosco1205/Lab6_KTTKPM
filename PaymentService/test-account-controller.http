@@ -1,0 +1,47 @@
+### Test Database Connection
+GET http://localhost:5160/test-db
+Accept: application/json
+
+###
+
+### Create Account via Controller
+POST http://localhost:5160/api/account
+Content-Type: application/json
+
+{
+  "policyNumber": "POL-CTRL-001",
+  "policyAccountNumber": "ACC-CTRL-001",
+  "balance": 5000.00
+}
+
+###
+
+### Create Another Account via Controller
+POST http://localhost:5160/api/account
+Content-Type: application/json
+
+{
+  "policyNumber": "POL-CTRL-002",
+  "policyAccountNumber": "ACC-CTRL-002", 
+  "balance": 7500.25
+}
+
+###
+
+### Get Account by Policy Number
+GET http://localhost:5160/api/account/POL-CTRL-001
+Accept: application/json
+
+###
+
+### Get Account by Policy Number (Not Found)
+GET http://localhost:5160/api/account/POL-CTRL-999
+Accept: application/json
+
+###
+
+### Test Swagger UI
+GET http://localhost:5160/swagger
+Accept: text/html
+
+###
