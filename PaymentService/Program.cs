@@ -61,10 +61,12 @@ app.MapGet("/test-db", async (IDocumentStore store) =>
 {
     try
     {
-        // Test connection by opening a session
+        // Test connection by opening a session and executing a simple query
         using var session = store.LightweightSession();
         
-        // Try to execute a simple query to test connection
+        // Execute a simple query to test connection
+        await session.Query<PolicyAccount>().CountAsync();
+        
         var connectionString = builder.Configuration.GetConnectionString("PgConnection");
         
         return Results.Ok(new { 
