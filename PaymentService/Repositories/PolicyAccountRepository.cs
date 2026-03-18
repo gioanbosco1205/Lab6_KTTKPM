@@ -19,6 +19,7 @@ public class PolicyAccountRepository : IPolicyAccountRepository
 
     public async Task<PolicyAccount> FindByNumber(string number)
     {
+        Console.WriteLine(">>> Running Regular LINQ Query: FindByNumber");
         return await _session.Query<PolicyAccount>()
             .FirstOrDefaultAsync(x => x.PolicyNumber == number) ?? new PolicyAccount();
     }
@@ -26,12 +27,14 @@ public class PolicyAccountRepository : IPolicyAccountRepository
     // LINQ Query Methods Implementation - Fixed return types
     public async Task<IReadOnlyList<PolicyAccount>> GetAllAccounts()
     {
+        Console.WriteLine(">>> Running Regular LINQ Query: GetAllAccounts");
         return await _session.Query<PolicyAccount>()
             .ToListAsync();
     }
 
     public async Task<IReadOnlyList<PolicyAccount>> FindByOwnerName(string ownerName)
     {
+        Console.WriteLine(">>> Running Regular LINQ Query: FindByOwnerName");
         return await _session.Query<PolicyAccount>()
             .Where(x => x.OwnerName == ownerName)
             .ToListAsync();
@@ -39,6 +42,7 @@ public class PolicyAccountRepository : IPolicyAccountRepository
 
     public async Task<IReadOnlyList<PolicyAccount>> FindAccountsWithBalanceGreaterThan(decimal minBalance)
     {
+        Console.WriteLine(">>> Running Regular LINQ Query: FindAccountsWithBalanceGreaterThan");
         return await _session.Query<PolicyAccount>()
             .Where(x => x.Balance > minBalance)
             .OrderByDescending(x => x.Balance)
@@ -69,12 +73,14 @@ public class PolicyAccountRepository : IPolicyAccountRepository
 
     public async Task<int> CountAccountsByOwner(string ownerName)
     {
+        Console.WriteLine(">>> Running Regular LINQ Query: CountAccountsByOwner");
         return await _session.Query<PolicyAccount>()
             .CountAsync(x => x.OwnerName == ownerName);
     }
 
     public async Task<decimal> GetTotalBalanceByOwner(string ownerName)
     {
+        Console.WriteLine(">>> Running Regular LINQ Query: GetTotalBalanceByOwner");
         return await _session.Query<PolicyAccount>()
             .Where(x => x.OwnerName == ownerName)
             .SumAsync(x => x.Balance);
@@ -82,6 +88,7 @@ public class PolicyAccountRepository : IPolicyAccountRepository
 
     public async Task<IReadOnlyList<PolicyAccount>> GetTopAccountsByBalance(int count)
     {
+        Console.WriteLine(">>> Running Regular LINQ Query: GetTopAccountsByBalance");
         return await _session.Query<PolicyAccount>()
             .OrderByDescending(x => x.Balance)
             .Take(count)

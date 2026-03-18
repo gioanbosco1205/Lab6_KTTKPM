@@ -22,6 +22,7 @@ builder.Services.AddMarten(options =>
 
 // Register repositories and services
 builder.Services.AddScoped<IPolicyAccountRepository, PolicyAccountRepository>();
+builder.Services.AddScoped<ICompiledPolicyAccountRepository, CompiledPolicyAccountRepository>();
 builder.Services.AddScoped<IDataStore, DataStore>();
 
 var app = builder.Build();
