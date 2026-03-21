@@ -91,7 +91,7 @@ app.UseAuthorization();
 // Map controllers
 app.MapControllers();
 
-// Map SignalR Hub (sẽ tạo sau)
-// app.MapHub<ChatHub>("/chathub");
+// Map SignalR Hub
+app.MapHub<ChatService.Hubs.AgentChatHub>("/chathub");
 
 app.Run();
