@@ -1,0 +1,22 @@
+### Test JWT Authentication
+
+### 1. Login để lấy JWT token
+POST https://localhost:7000/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "password": "testpass"
+}
+
+### 2. Validate JWT token (thay YOUR_TOKEN_HERE bằng token từ response trên)
+POST https://localhost:7000/api/auth/validate
+Content-Type: application/json
+
+{
+  "token": "YOUR_TOKEN_HERE"
+}
+
+### 3. Test protected endpoint (sẽ tạo sau)
+GET https://localhost:7000/api/chat/test
+Authorization: Bearer YOUR_TOKEN_HERE
