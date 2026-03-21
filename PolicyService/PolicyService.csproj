@@ -10,6 +10,9 @@
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.HealthChecks" Version="2.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.2" />
     <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="10.0.3" />
+    <PackageReference Include="RawRabbit" Version="2.0.0-rc5" />
+    <PackageReference Include="RawRabbit.DependencyInjection.ServiceCollection" Version="2.0.0-rc5" />
+    <PackageReference Include="RawRabbit.Operations.Publish" Version="2.0.0-rc5" />
     <PackageReference Include="Steeltoe.Discovery.ClientCore" Version="2.1.1" />
   </ItemGroup>
 

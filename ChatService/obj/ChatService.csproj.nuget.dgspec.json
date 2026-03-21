@@ -59,6 +59,14 @@
               "target": "Package",
               "version": "[1.2.9, )"
             },
+            "RawRabbit.DependencyInjection.ServiceCollection": {
+              "target": "Package",
+              "version": "[2.0.0-rc5, )"
+            },
+            "RawRabbit.Operations.Tools": {
+              "target": "Package",
+              "version": "[2.0.0-rc5, )"
+            },
             "Swashbuckle.AspNetCore": {
               "target": "Package",
               "version": "[6.6.2, )"

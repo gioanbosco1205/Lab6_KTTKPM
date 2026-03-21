@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using RawRabbit.DependencyInjection.ServiceCollection;
+using RawRabbit.Configuration;
+using ChatService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -66,6 +69,25 @@ builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Progr
 // Đăng ký JWT Service
 builder.Services.AddScoped<ChatService.Services.IJwtService, ChatService.Services.JwtService>();
 
+// Đăng ký RabbitEventPublisher
+builder.Services.AddScoped<ChatService.Services.RabbitEventPublisher>();
+
+// ⭐ PHẦN 13 - Đăng ký Event Subscriber Services
+builder.Services.AddScoped<PolicyEventSubscriber>();
+builder.Services.AddHostedService<EventSubscriberHostedService>();
+
+// Cấu hình RabbitMQ
+builder.Services.AddRawRabbit(new RawRabbitOptions
+{
+    ClientConfiguration = new RawRabbitConfiguration
+    {
+        Username = "guest",
+        Password = "guest",
+        Port = 5672,
+        Hostnames = { "localhost" }
+    }
+});
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -92,6 +114,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 // Map SignalR Hub
-app.MapHub<ChatService.Hubs.AgentChatHub>("/chathub");
+app.MapHub<ChatService.Hubs.AgentChatHub>("/agentsChat");
 
 app.Run();

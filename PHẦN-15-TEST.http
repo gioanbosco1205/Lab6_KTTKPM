@@ -1,0 +1,58 @@
+### PHẦN 15 - TEST HỆ THỐNG HOÀN CHỈNH
+
+### 1. Kiểm tra PolicyService
+GET http://localhost:5002/api/policy/test
+
+### 2. Kiểm tra ChatService
+GET http://localhost:5003/api/auth/test
+
+### 3. Tạo Policy (Trigger Event Flow)
+POST http://localhost:5002/api/policy/create
+Content-Type: application/json
+
+{
+  "customerName": "Agent Test User"
+}
+
+### 4. Tạo Policy khác
+POST http://localhost:5002/api/policy/create
+Content-Type: application/json
+
+{
+  "customerName": "Real-time Test Customer"
+}
+
+### 5. Test Manual Notification (Backup)
+POST http://localhost:5003/api/notification/simulate-policy
+
+###
+### 🧪 TEST SEQUENCE:
+### 
+### STEP 1: Start Services
+### - docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
+### - cd PolicyService && dotnet run
+### - cd ChatService && dotnet run
+### 
+### STEP 2: Open Client
+### - Mở test-client.html trong browser
+### - Click "Connect to ChatService"
+### - Verify status = Connected ✅
+### 
+### STEP 3: Test Chat
+### - Mở thêm tab browser với test-client.html
+### - Test chat giữa các agents
+### 
+### STEP 4: Test Policy Creation
+### - Chạy request #3 và #4 ở trên
+### - Hoặc click "Create Test Policy" trong client
+### - Verify notification xuất hiện real-time
+### 
+### STEP 5: Verify End-to-End
+### - PolicyService tạo policy ✅
+### - Event published to RabbitMQ ✅
+### - ChatService receives event ✅
+### - SignalR notification sent ✅
+### - Client receives notification ✅
+###
+### 🎯 SUCCESS: Khi tạo policy, tất cả clients nhận notification trong < 1 giây
+###

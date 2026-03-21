@@ -1,24 +1,80 @@
 using Microsoft.AspNetCore.Mvc;
+using PolicyService.Events;
+using PolicyService.Services;
 
 [ApiController]
 [Route("api/policy")]
 public class PolicyController : ControllerBase
 {
     private readonly PricingClient _pricingClient;
+    private readonly RabbitEventPublisher _eventPublisher;
 
-    public PolicyController(PricingClient pricingClient)
+    public PolicyController(PricingClient pricingClient, RabbitEventPublisher eventPublisher)
     {
         _pricingClient = pricingClient;
+        _eventPublisher = eventPublisher;
     }
 
-    [HttpGet]
-    public async Task<IActionResult> CreatePolicy()
+    [HttpPost("create")]
+    public async Task<IActionResult> CreatePolicy([FromBody] CreatePolicyRequest request)
     {
-        var price = await _pricingClient.GetPrice();
-        return Ok(new
+        try
         {
-            message = "Policy created",
-            pricing = price
-        });
+            // Lấy giá từ PricingService
+            var priceString = await _pricingClient.GetPrice();
+            
+            // Parse price từ string response
+            decimal price = 1500.00m; // Default price nếu không parse được
+            if (decimal.TryParse(priceString, out decimal parsedPrice))
+            {
+                price = parsedPrice;
+            }
+            
+            // Tạo policy number
+            var policyNumber = $"POL-{DateTime.Now:yyyyMMdd}-{DateTime.Now.Ticks % 10000:D4}";
+            
+            // Simulate policy creation logic
+            var policy = new
+            {
+                Number = policyNumber,
+                CustomerName = request.CustomerName,
+                Premium = price,
+                Status = "Active",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            // ⭐ PUBLISH EVENT - PHẦN 12
+            await _eventPublisher.PublishMessage(new PolicyCreated
+            {
+                PolicyNumber = policy.Number,
+                Premium = policy.Premium,
+                CreatedAt = policy.CreatedAt,
+                Status = policy.Status
+            });
+
+            return Ok(new
+            {
+                message = "Policy created successfully",
+                policy = policy,
+                eventPublished = true
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
+
+    [HttpGet("test")]
+    public async Task<IActionResult> TestCreatePolicy()
+    {
+        // Test endpoint với dữ liệu mẫu
+        var request = new CreatePolicyRequest { CustomerName = "Test Customer" };
+        return await CreatePolicy(request);
+    }
+}
+
+public class CreatePolicyRequest
+{
+    public string CustomerName { get; set; } = string.Empty;
 }
