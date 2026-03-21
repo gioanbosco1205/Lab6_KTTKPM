@@ -7,9 +7,23 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 
+// Cấu hình CORS
+var allowedOrigins = builder.Configuration.GetSection("AppSettings:AllowedChatOrigins").Get<string[]>() ?? new[] { "http://localhost:8080" };
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("CorsPolicy", builder =>
+    {
+        builder.AllowAnyHeader()
+               .AllowAnyMethod()
+               .AllowCredentials()
+               .WithOrigins(allowedOrigins);
+    });
+});
+
 // Cấu hình JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = jwtSettings["SecretKey"];
+var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is not configured");
 
 builder.Services.AddAuthentication(x =>
 {
@@ -66,6 +80,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Sử dụng CORS
+app.UseCors("CorsPolicy");
 
 // Thêm Authentication và Authorization middleware
 app.UseAuthentication();

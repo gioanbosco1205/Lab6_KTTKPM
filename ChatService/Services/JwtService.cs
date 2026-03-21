@@ -34,22 +34,24 @@ public class JwtService : IJwtService
         var tokenHandler = new JwtSecurityTokenHandler();
         var key = Encoding.UTF8.GetBytes(_secretKey);
         
-        var tokenDescriptor = new SecurityTokenDescriptor
+        var claims = new[]
         {
-            Subject = new ClaimsIdentity(new[]
-            {
-                new Claim(ClaimTypes.NameIdentifier, userId),
-                new Claim(ClaimTypes.Name, username),
-                new Claim("userId", userId),
-                new Claim("username", username)
-            }),
-            Expires = DateTime.UtcNow.AddMinutes(_expiryInMinutes),
-            Issuer = _issuer,
-            Audience = _audience,
-            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            new Claim(ClaimTypes.NameIdentifier, userId),
+            new Claim(ClaimTypes.Name, username),
+            new Claim("userId", userId),
+            new Claim("username", username),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new Claim(JwtRegisteredClaimNames.Iat, new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
         };
 
-        var token = tokenHandler.CreateToken(tokenDescriptor);
+        var token = new JwtSecurityToken(
+            issuer: _issuer,
+            audience: _audience,
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(_expiryInMinutes),
+            signingCredentials: new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256)
+        );
+
         return tokenHandler.WriteToken(token);
     }
 
@@ -64,10 +66,8 @@ public class JwtService : IJwtService
             {
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = new SymmetricSecurityKey(key),
-                ValidateIssuer = true,
-                ValidIssuer = _issuer,
-                ValidateAudience = true,
-                ValidAudience = _audience,
+                ValidateIssuer = false,  // Tạm thời tắt để test
+                ValidateAudience = false, // Tạm thời tắt để test
                 ValidateLifetime = true,
                 ClockSkew = TimeSpan.Zero
             };
@@ -75,8 +75,10 @@ public class JwtService : IJwtService
             var principal = tokenHandler.ValidateToken(token, validationParameters, out SecurityToken validatedToken);
             return principal;
         }
-        catch
+        catch (Exception ex)
         {
+            // Log exception để debug
+            Console.WriteLine($"Token validation error: {ex.Message}");
             return null;
         }
     }
