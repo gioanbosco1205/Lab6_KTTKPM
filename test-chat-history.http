@@ -1,0 +1,54 @@
+### 💬 CHAT HISTORY API TEST
+
+### Bước 1: Authenticate agent để lấy JWT token
+POST http://localhost:5003/api/auth/agent-login
+Content-Type: application/json
+
+{
+    "agentId": "agent1",
+    "agentName": "Agent Smith"
+}
+
+### Bước 2: Get group messages (cần JWT token từ bước 1)
+GET http://localhost:5003/api/chathistory/group-messages?limit=20&offset=0
+Authorization: Bearer {{JWT_TOKEN_FROM_STEP_1}}
+
+### Bước 3: Get private messages with another agent
+GET http://localhost:5003/api/chathistory/private-messages/agent2?limit=20&offset=0
+Authorization: Bearer {{JWT_TOKEN_FROM_STEP_1}}
+
+### Bước 4: Get all my messages
+GET http://localhost:5003/api/chathistory/my-messages?limit=20&offset=0
+Authorization: Bearer {{JWT_TOKEN_FROM_STEP_1}}
+
+### Bước 5: Mark messages as read
+POST http://localhost:5003/api/chathistory/mark-read/agent2
+Authorization: Bearer {{JWT_TOKEN_FROM_STEP_1}}
+
+### Bước 6: Get unread message count
+GET http://localhost:5003/api/chathistory/unread-count
+Authorization: Bearer {{JWT_TOKEN_FROM_STEP_1}}
+
+### Bước 7: Get online agents from database
+GET http://localhost:5003/api/chathistory/online-agents
+Authorization: Bearer {{JWT_TOKEN_FROM_STEP_1}}
+
+### ===== QUICK TEST =====
+
+### Test với agent1
+POST http://localhost:5003/api/auth/agent-login
+Content-Type: application/json
+
+{
+    "agentId": "agent1",
+    "agentName": "Agent Smith"
+}
+
+### Test với agent2
+POST http://localhost:5003/api/auth/agent-login
+Content-Type: application/json
+
+{
+    "agentId": "agent2",
+    "agentName": "Agent Johnson"
+}

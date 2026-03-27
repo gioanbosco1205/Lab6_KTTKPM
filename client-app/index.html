@@ -14,7 +14,7 @@
         }
         .container {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr 1fr 300px;
             gap: 20px;
         }
         .panel {
@@ -80,6 +80,44 @@
             display: grid;
             gap: 10px;
         }
+        .private-message {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+        }
+        .private-sent {
+            background-color: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+        }
+        .online-agents {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        .agent-item {
+            padding: 5px;
+            margin: 2px 0;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        .agent-item:hover {
+            background-color: #f0f0f0;
+        }
+        .agent-online {
+            color: #28a745;
+        }
+        .agent-offline {
+            color: #6c757d;
+        }
+        .private-chat-area {
+            height: 150px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            background-color: #fafafa;
+        }
         .form-group {
             display: flex;
             flex-direction: column;
@@ -91,8 +129,8 @@
     </style>
 </head>
 <body>
-    <h1>🏢 Insurance System Test - Part 15</h1>
-    <p><strong>Test Flow:</strong> RabbitMQ → PolicyService → ChatService → Client App</p>
+    <h1>🏢 Insurance System Test - Part 15 + Private Messages</h1>
+    <p><strong>Test Flow:</strong> RabbitMQ → PolicyService → ChatService → Client App + Private Messages</p>
     
     <div class="container">
         <!-- Agent Chat Panel -->
@@ -128,6 +166,58 @@
                 <button onclick="createPolicy()">Create Policy (Trigger Event)</button>
             </div>
         </div>
+
+        <!-- Private Messages Panel -->
+        <div class="panel">
+            <h2>💬 Private Messages</h2>
+            
+            <h3>Online Agents</h3>
+            <div class="online-agents" id="onlineAgents">
+                <div class="agent-item">Loading agents...</div>
+            </div>
+            <button onclick="refreshAgents()">Refresh Agents</button>
+            
+            <h3>Private Chat</h3>
+            <div>
+                <select id="targetAgent">
+                    <option value="">Select agent...</option>
+                </select>
+            </div>
+            
+            <div class="private-chat-area" id="privateChatArea"></div>
+            
+            <div>
+                <input type="text" id="privateMessageInput" placeholder="Type private message..." style="width: 70%">
+                <button onclick="sendPrivateMessage()">Send Private</button>
+            </div>
+        </div>
+
+        <!-- Chat History Panel -->
+        <div class="panel">
+            <h2>📚 Chat History</h2>
+            
+            <div style="margin-bottom: 10px;">
+                <button onclick="loadGroupHistory()">Load Group History</button>
+                <button onclick="loadPrivateHistory()">Load Private History</button>
+                <button onclick="getUnreadCount()">Check Unread</button>
+            </div>
+            
+            <div>
+                <select id="historyTargetAgent">
+                    <option value="">Select agent for private history...</option>
+                </select>
+            </div>
+            
+            <div class="chat-area" id="historyArea" style="height: 200px; background-color: #f8f9fa;">
+                <div style="color: #666; text-align: center; padding: 20px;">
+                    Click buttons above to load chat history from database
+                </div>
+            </div>
+            
+            <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                <span id="historyStatus">Ready to load history</span>
+            </div>
+        </div>
     </div>
 
     <!-- Notifications Panel -->
@@ -141,6 +231,8 @@
     <script>
         let connection = null;
         let agentToken = null;
+        let currentAgentId = null;
+        let onlineAgents = [];
 
         // Connect agent to chat
         async function connectAgent() {
@@ -170,6 +262,7 @@
                 if (response.ok) {
                     const data = await response.json();
                     agentToken = data.token;
+                    currentAgentId = agentId;
                     console.log('Agent authenticated successfully, token received');
                     
                     // Connect to SignalR hub
@@ -204,6 +297,27 @@
                         addChatMessage(`${agentId} left the chat`, 'system-message');
                     });
 
+                    // Handle private messages
+                    connection.on("ReceivePrivateMessage", function (senderName, senderId, message) {
+                        console.log('Received private message:', senderName, message);
+                        addPrivateMessage(`From ${senderName}: ${message}`, 'private-message');
+                    });
+
+                    connection.on("PrivateMessageSent", function (targetAgentId, message) {
+                        console.log('Private message sent to:', targetAgentId);
+                        addPrivateMessage(`To ${targetAgentId}: ${message}`, 'private-sent');
+                    });
+
+                    connection.on("OnlineAgentsList", function (agents) {
+                        console.log('Online agents:', agents);
+                        updateOnlineAgents(agents);
+                    });
+
+                    connection.on("AgentStatusChanged", function (agentId, agentName, status) {
+                        console.log('Agent status changed:', agentId, status);
+                        updateAgentStatus(agentId, agentName, status);
+                    });
+
                     console.log('Starting SignalR connection...');
                     await connection.start();
                     console.log('SignalR connection started, joining agent group...');
@@ -215,6 +329,11 @@
                     document.getElementById('chatStatus').className = 'status connected';
                     
                     addChatMessage(`Connected as ${agentName}`, 'system-message');
+                    
+                    // Get online agents list
+                    setTimeout(() => {
+                        connection.invoke("GetOnlineAgents");
+                    }, 1000);
                 } else {
                     const errorText = await response.text();
                     console.error('Authentication failed:', response.status, errorText);
@@ -234,9 +353,14 @@
                 await connection.stop();
                 connection = null;
                 agentToken = null;
+                currentAgentId = null;
                 document.getElementById('chatStatus').textContent = 'Disconnected';
                 document.getElementById('chatStatus').className = 'status disconnected';
                 addChatMessage('Disconnected from chat', 'system-message');
+                
+                // Clear online agents
+                document.getElementById('onlineAgents').innerHTML = '<div class="agent-item">Not connected</div>';
+                document.getElementById('targetAgent').innerHTML = '<option value="">Select agent...</option>';
             }
         }
 
@@ -252,6 +376,37 @@
                     messageInput.value = '';
                 } catch (error) {
                     console.error('Send message failed:', error);
+                }
+            }
+        }
+
+        // Send private message
+        async function sendPrivateMessage() {
+            const messageInput = document.getElementById('privateMessageInput');
+            const targetSelect = document.getElementById('targetAgent');
+            const message = messageInput.value.trim();
+            const targetAgentId = targetSelect.value;
+            
+            if (message && targetAgentId && connection) {
+                try {
+                    await connection.invoke("SendPrivateMessage", targetAgentId, message);
+                    messageInput.value = '';
+                } catch (error) {
+                    console.error('Send private message failed:', error);
+                    addPrivateMessage(`Failed to send message to ${targetAgentId}`, 'system-message');
+                }
+            } else {
+                alert('Please select a target agent and enter a message');
+            }
+        }
+
+        // Refresh agents list
+        async function refreshAgents() {
+            if (connection) {
+                try {
+                    await connection.invoke("GetOnlineAgents");
+                } catch (error) {
+                    console.error('Refresh agents failed:', error);
                 }
             }
         }
@@ -307,6 +462,67 @@
             chatArea.scrollTop = chatArea.scrollHeight;
         }
 
+        function addPrivateMessage(message, className) {
+            const privateChatArea = document.getElementById('privateChatArea');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${className}`;
+            messageDiv.innerHTML = `<small>${new Date().toLocaleTimeString()}</small><br>${message}`;
+            privateChatArea.appendChild(messageDiv);
+            privateChatArea.scrollTop = privateChatArea.scrollHeight;
+        }
+
+        function updateOnlineAgents(agents) {
+            onlineAgents = agents;
+            const onlineAgentsDiv = document.getElementById('onlineAgents');
+            const targetSelect = document.getElementById('targetAgent');
+            
+            // Update online agents display
+            onlineAgentsDiv.innerHTML = '';
+            targetSelect.innerHTML = '<option value="">Select agent...</option>';
+            
+            agents.forEach(agent => {
+                // Skip current user
+                if (agent.AgentId === currentAgentId) return;
+                
+                // Add to online agents list
+                const agentDiv = document.createElement('div');
+                agentDiv.className = `agent-item ${agent.Status === 'Online' ? 'agent-online' : 'agent-offline'}`;
+                agentDiv.innerHTML = `🟢 ${agent.AgentName} (${agent.AgentId}) - ${agent.Status}`;
+                agentDiv.onclick = () => selectTargetAgent(agent.AgentId, agent.AgentName);
+                onlineAgentsDiv.appendChild(agentDiv);
+                
+                // Add to target select
+                if (agent.Status === 'Online') {
+                    const option = document.createElement('option');
+                    option.value = agent.AgentId;
+                    option.textContent = `${agent.AgentName} (${agent.AgentId})`;
+                    targetSelect.appendChild(option);
+                }
+            });
+            
+            if (agents.length === 0 || agents.filter(a => a.AgentId !== currentAgentId).length === 0) {
+                onlineAgentsDiv.innerHTML = '<div class="agent-item">No other agents online</div>';
+            }
+        }
+
+        function selectTargetAgent(agentId, agentName) {
+            document.getElementById('targetAgent').value = agentId;
+            addPrivateMessage(`Selected ${agentName} for private chat`, 'system-message');
+        }
+
+        function updateAgentStatus(agentId, agentName, status) {
+            // Update the agents list with new status
+            const existingAgent = onlineAgents.find(a => a.AgentId === agentId);
+            if (existingAgent) {
+                existingAgent.Status = status;
+            } else if (status === 'Online') {
+                onlineAgents.push({ AgentId: agentId, AgentName: agentName, Status: status });
+            }
+            
+            updateOnlineAgents(onlineAgents);
+            addChatMessage(`${agentName} is now ${status}`, 'system-message');
+        }
+
         function addNotification(message, className) {
             const notificationArea = document.getElementById('notificationArea');
             const messageDiv = document.createElement('div');
@@ -320,21 +536,209 @@
             document.getElementById('notificationArea').innerHTML = '';
         }
 
-        // Handle Enter key in message input
+        // Handle Enter key in message inputs
         document.getElementById('messageInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 sendMessage();
             }
         });
 
+        document.getElementById('privateMessageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendPrivateMessage();
+            }
+        });
+
+        // ⭐ CHAT HISTORY FUNCTIONS
+        async function loadGroupHistory() {
+            if (!agentToken) {
+                alert('Please connect as an agent first');
+                return;
+            }
+
+            try {
+                document.getElementById('historyStatus').textContent = 'Loading group history...';
+                
+                const response = await fetch('http://localhost:5003/api/chathistory/group-messages?limit=20', {
+                    headers: {
+                        'Authorization': `Bearer ${agentToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const messages = await response.json();
+                    displayHistoryMessages(messages, 'Group Chat History');
+                    document.getElementById('historyStatus').textContent = `Loaded ${messages.length} group messages`;
+                } else {
+                    throw new Error(`Failed to load group history: ${response.status}`);
+                }
+            } catch (error) {
+                console.error('Load group history failed:', error);
+                document.getElementById('historyStatus').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function loadPrivateHistory() {
+            if (!agentToken) {
+                alert('Please connect as an agent first');
+                return;
+            }
+
+            const targetAgentId = document.getElementById('historyTargetAgent').value;
+            if (!targetAgentId) {
+                alert('Please select an agent for private history');
+                return;
+            }
+
+            try {
+                document.getElementById('historyStatus').textContent = 'Loading private history...';
+                
+                const response = await fetch(`http://localhost:5003/api/chathistory/private-messages/${targetAgentId}?limit=20`, {
+                    headers: {
+                        'Authorization': `Bearer ${agentToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const messages = await response.json();
+                    displayHistoryMessages(messages, `Private Chat with ${targetAgentId}`);
+                    document.getElementById('historyStatus').textContent = `Loaded ${messages.length} private messages`;
+                } else {
+                    throw new Error(`Failed to load private history: ${response.status}`);
+                }
+            } catch (error) {
+                console.error('Load private history failed:', error);
+                document.getElementById('historyStatus').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function getUnreadCount() {
+            if (!agentToken) {
+                alert('Please connect as an agent first');
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:5003/api/chathistory/unread-count', {
+                    headers: {
+                        'Authorization': `Bearer ${agentToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('historyStatus').textContent = `You have ${data.unreadCount} unread messages`;
+                    
+                    if (data.unreadCount > 0) {
+                        addNotification(`📬 You have ${data.unreadCount} unread messages`, 'notification');
+                    }
+                } else {
+                    throw new Error(`Failed to get unread count: ${response.status}`);
+                }
+            } catch (error) {
+                console.error('Get unread count failed:', error);
+                document.getElementById('historyStatus').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        function displayHistoryMessages(messages, title) {
+            const historyArea = document.getElementById('historyArea');
+            historyArea.innerHTML = `<h4 style="margin: 0 0 10px 0; color: #333;">${title}</h4>`;
+            
+            if (messages.length === 0) {
+                historyArea.innerHTML += '<div style="color: #666; text-align: center; padding: 20px;">No messages found</div>';
+                return;
+            }
+
+            messages.forEach(msg => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message';
+                
+                const messageType = msg.messageType === 2 ? 'Private' : 'Group';
+                const timestamp = new Date(msg.createdAt).toLocaleString();
+                const isRead = msg.isRead ? '✓' : '○';
+                
+                let messageContent = '';
+                if (msg.messageType === 2) { // Private message
+                    const direction = msg.senderId === currentAgentId ? 'To' : 'From';
+                    const otherAgent = msg.senderId === currentAgentId ? msg.receiverName : msg.senderName;
+                    messageContent = `[${messageType}] ${direction} ${otherAgent}: ${msg.message}`;
+                } else {
+                    messageContent = `[${messageType}] ${msg.senderName}: ${msg.message}`;
+                }
+                
+                messageDiv.innerHTML = `
+                    <small style="color: #666;">${timestamp} ${isRead}</small><br>
+                    ${messageContent}
+                `;
+                
+                // Color coding
+                if (msg.messageType === 2) { // Private
+                    messageDiv.style.backgroundColor = msg.senderId === currentAgentId ? '#e3f2fd' : '#fff3e0';
+                } else { // Group
+                    messageDiv.style.backgroundColor = '#f5f5f5';
+                }
+                
+                historyArea.appendChild(messageDiv);
+            });
+            
+            historyArea.scrollTop = historyArea.scrollHeight;
+        }
+
+        // Update the updateOnlineAgents function to also populate history target select
+        function updateOnlineAgentsOriginal(agents) {
+            onlineAgents = agents;
+            const onlineAgentsDiv = document.getElementById('onlineAgents');
+            const targetSelect = document.getElementById('targetAgent');
+            const historyTargetSelect = document.getElementById('historyTargetAgent');
+            
+            // Update online agents display
+            onlineAgentsDiv.innerHTML = '';
+            targetSelect.innerHTML = '<option value="">Select agent...</option>';
+            historyTargetSelect.innerHTML = '<option value="">Select agent for private history...</option>';
+            
+            agents.forEach(agent => {
+                // Skip current user
+                if (agent.AgentId === currentAgentId) return;
+                
+                // Add to online agents list
+                const agentDiv = document.createElement('div');
+                agentDiv.className = `agent-item ${agent.Status === 'Online' ? 'agent-online' : 'agent-offline'}`;
+                agentDiv.innerHTML = `🟢 ${agent.AgentName} (${agent.AgentId}) - ${agent.Status}`;
+                agentDiv.onclick = () => selectTargetAgent(agent.AgentId, agent.AgentName);
+                onlineAgentsDiv.appendChild(agentDiv);
+                
+                // Add to target selects
+                if (agent.Status === 'Online') {
+                    const option1 = document.createElement('option');
+                    option1.value = agent.AgentId;
+                    option1.textContent = `${agent.AgentName} (${agent.AgentId})`;
+                    targetSelect.appendChild(option1);
+
+                    const option2 = document.createElement('option');
+                    option2.value = agent.AgentId;
+                    option2.textContent = `${agent.AgentName} (${agent.AgentId})`;
+                    historyTargetSelect.appendChild(option2);
+                }
+            });
+            
+            if (agents.length === 0 || agents.filter(a => a.AgentId !== currentAgentId).length === 0) {
+                onlineAgentsDiv.innerHTML = '<div class="agent-item">No other agents online</div>';
+            }
+        }
+
+        // Replace the original updateOnlineAgents function
+        updateOnlineAgents = updateOnlineAgentsOriginal;
+
         // Auto-connect on page load for demo
         window.addEventListener('load', function() {
             setTimeout(() => {
-                addNotification('Welcome to Insurance System Test - Part 15', 'system-message');
+                addNotification('Welcome to Insurance System Test - Part 15 + Chat History', 'system-message');
                 addNotification('1. Start Docker containers: docker-compose up', 'system-message');
                 addNotification('2. Connect agents using the form above', 'system-message');
                 addNotification('3. Create policies to trigger events', 'system-message');
-                addNotification('4. Watch real-time notifications', 'system-message');
+                addNotification('4. Send messages and check chat history', 'system-message');
+                addNotification('5. Watch real-time notifications', 'system-message');
             }, 1000);
         });
     </script>

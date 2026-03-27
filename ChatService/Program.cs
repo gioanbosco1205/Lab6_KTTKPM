@@ -1,13 +1,27 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.EntityFrameworkCore;
 using System.Text;
 using ChatService.Services;
 using ChatService.Hubs;
+using ChatService.Data;
+using ChatService.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
+
+// ⭐ PHẦN MỚI - Cấu hình Entity Framework với PostgreSQL
+builder.Services.AddDbContext<ChatDbContext>(options =>
+{
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+        ?? "Host=localhost;Port=5432;Database=ChatServiceDb;Username=postgres;Password=postgres";
+    options.UseNpgsql(connectionString);
+});
+
+// ⭐ PHẦN MỚI - Đăng ký Repository
+builder.Services.AddScoped<IChatRepository, ChatRepository>();
 
 // Cấu hình CORS
 builder.Services.AddCors(options =>
@@ -90,6 +104,22 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+// ⭐ PHẦN MỚI - Auto migrate database
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<ChatDbContext>();
+    try
+    {
+        context.Database.Migrate();
+        Console.WriteLine("✅ Database migration completed successfully");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ Database migration failed: {ex.Message}");
+        // Continue running even if migration fails
+    }
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
