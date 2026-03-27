@@ -63,14 +63,29 @@ open client-app/index.html
    - Tab 2: Select "agent1" → Type "Private reply!" → Send Private
    - Tab 1: Thấy reply trong "Private Chat"
 
-#### **3.3 Test Policy Notifications:**
-1. **Tạo policy:**
+#### **3.3 Test Policy Events:**
+1. **Create Policy:**
    - Customer Name: "Test Customer"
    - Click "Create Policy (Trigger Event)"
+   - **Kết quả**: "🎉 New Policy Created!" toast notification (xanh)
 
-2. **Kết quả:**
-   - Policy được tạo thành công
-   - Notification xuất hiện real-time ở tất cả connected agents
+2. **Terminate Policy:**
+   - Click "Terminate Policy" (red button)
+   - **Kết quả**: "🚫 Policy Terminated" toast notification (vàng)
+
+3. **Activate Product:**
+   - Click "Activate Product" (green button)
+   - **Kết quả**: "✨ Product Activated!" toast notification (xanh dương)
+
+#### **3.4 Test Toast Notifications:**
+1. **Manual Test:**
+   - Click "Test Toasts" button
+   - **Kết quả**: 4 toast notifications xuất hiện lần lượt với animations
+
+2. **Real-time Test:**
+   - Tất cả events tự động tạo toast notifications
+   - Toast có sound alerts và visual effects
+   - Notification counter tự động tăng
 
 ### **Bước 4: Test Chat History Database**
 
@@ -119,7 +134,14 @@ docker exec -it postgres psql -U postgres -d ChatServiceDb -c "SELECT * FROM \"A
 - Messages xuất hiện ngay lập tức
 - Online agents list update real-time
 - Private messages chỉ người nhận thấy
-- Policy notifications broadcast tới tất cả
+- **Enhanced Toast Notifications:**
+  - 🎉 Policy Created (Success toast)
+  - 🚫 Policy Terminated (Warning toast)
+  - ✨ Product Activated (Info toast)
+  - 💬 Chat Messages (Info toast)
+  - 🔒 Private Messages (Info toast)
+- **Visual Effects**: Slide animations, progress bars, sound alerts
+- **Notification Counter**: Real-time counter + badge popup
 
 ### ✅ **Chat History:**
 - Messages được lưu vào database ngay khi gửi

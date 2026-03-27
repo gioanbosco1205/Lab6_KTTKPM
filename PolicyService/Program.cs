@@ -7,6 +7,17 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDiscoveryClient(builder.Configuration);
 builder.Services.AddControllers();
 
+// ⭐ CORS Configuration
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", builder =>
+    {
+        builder.AllowAnyOrigin()
+               .AllowAnyMethod()
+               .AllowAnyHeader();
+    });
+});
+
 builder.Services.AddSingleton<PricingClient>();
 
 // ⭐ RabbitMQ Configuration
@@ -24,6 +35,9 @@ builder.Services.AddSingleton<RabbitMQ.Client.IConnectionFactory>(sp =>
 builder.Services.AddScoped<RabbitEventPublisher>();
 
 var app = builder.Build();
+
+// ⭐ Use CORS
+app.UseCors("AllowAll");
 
 app.UseDiscoveryClient();   // ⭐ BẮT BUỘC PHẢI CÓ
 

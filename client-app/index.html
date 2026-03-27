@@ -126,6 +126,187 @@
             font-weight: bold;
             margin-bottom: 5px;
         }
+
+        /* ⭐ TOAST NOTIFICATIONS STYLES */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 400px;
+        }
+        
+        .toast {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            margin-bottom: 10px;
+            padding: 16px;
+            border-left: 4px solid #007bff;
+            animation: slideIn 0.3s ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .toast.success {
+            border-left-color: #28a745;
+        }
+        
+        .toast.warning {
+            border-left-color: #ffc107;
+        }
+        
+        .toast.error {
+            border-left-color: #dc3545;
+        }
+        
+        .toast.info {
+            border-left-color: #17a2b8;
+        }
+        
+        .toast-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .toast-title {
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .toast-close {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0;
+            margin: 0;
+            color: #999;
+        }
+        
+        .toast-body {
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .toast-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background: rgba(0,0,0,0.1);
+            animation: progress 5s linear;
+        }
+        
+        .toast.success .toast-progress {
+            background: #28a745;
+        }
+        
+        .toast.warning .toast-progress {
+            background: #ffc107;
+        }
+        
+        .toast.error .toast-progress {
+            background: #dc3545;
+        }
+        
+        .toast.info .toast-progress {
+            background: #17a2b8;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+        
+        @keyframes progress {
+            from {
+                width: 100%;
+            }
+            to {
+                width: 0%;
+            }
+        }
+        
+        /* ⭐ NOTIFICATION BADGE */
+        .notification-badge {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #007bff;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            z-index: 9998;
+            animation: bounce 0.5s ease-out;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: translateX(-50%) translateY(0);
+            }
+            40% {
+                transform: translateX(-50%) translateY(-10px);
+            }
+            60% {
+                transform: translateX(-50%) translateY(-5px);
+            }
+        }
+        
+        /* ⭐ PULSE ANIMATION FOR BUTTONS */
+        .pulse {
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(33, 150, 243, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(33, 150, 243, 0);
+            }
+        }
+        
+        /* ⭐ NOTIFICATION COUNTER */
+        .notification-counter {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #dc3545;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -164,6 +345,8 @@
                     <input type="text" id="customerName" value="Test Customer">
                 </div>
                 <button onclick="createPolicy()">Create Policy (Trigger Event)</button>
+                <button onclick="terminatePolicy()" style="background-color: #dc3545;">Terminate Policy</button>
+                <button onclick="activateProduct()" style="background-color: #28a745;">Activate Product</button>
             </div>
         </div>
 
@@ -222,9 +405,16 @@
 
     <!-- Notifications Panel -->
     <div class="panel" style="margin-top: 20px;">
-        <h2>🔔 Real-time Notifications</h2>
+        <h2>🔔 Real-time Notifications & Toast System</h2>
         <div class="chat-area" id="notificationArea"></div>
-        <button onclick="clearNotifications()">Clear Notifications</button>
+        <div style="margin-top: 10px;">
+            <button onclick="clearNotifications()">Clear Notifications</button>
+            <button onclick="clearAllToasts()">Clear Toasts</button>
+            <button onclick="testToastNotifications()" style="background-color: #17a2b8;">Test Toasts</button>
+        </div>
+        <div style="margin-top: 10px; font-size: 12px; color: #666;">
+            <span id="notificationCounter">Notifications: 0</span>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
@@ -280,32 +470,53 @@
                     connection.on("ReceiveMessage", function (fromAgent, message) {
                         console.log('Received message:', fromAgent, message);
                         addChatMessage(`${fromAgent}: ${message}`, 'agent-message');
+                        showToast('info', '💬 New Message', `${fromAgent}: ${message}`);
                     });
 
                     connection.on("PolicyNotification", function (message) {
                         console.log('Received policy notification:', message);
                         addNotification(`Policy Event: ${message}`, 'notification');
+                        showToast('success', '🎉 Policy Event', message);
+                    });
+
+                    connection.on("ReceivePolicyNotification", function (notification) {
+                        console.log('Received detailed policy notification:', notification);
+                        addNotification(`${notification.Title}: ${notification.Message}`, 'notification');
+                        
+                        // Show enhanced toast based on notification type
+                        const toastType = notification.Type === 'PolicyCreated' ? 'success' : 
+                                         notification.Type === 'PolicyTerminated' ? 'warning' : 'info';
+                        showToast(toastType, notification.Title, notification.Message, 7000);
+                    });
+
+                    connection.on("ReceiveToast", function (toast) {
+                        console.log('Received toast notification:', toast);
+                        showToast(toast.Type, toast.Title, toast.Message, toast.Duration);
                     });
 
                     connection.on("AgentJoined", function (agentId) {
                         console.log('Agent joined:', agentId);
                         addChatMessage(`${agentId} joined the chat`, 'system-message');
+                        showToast('info', '👋 Agent Joined', `${agentId} joined the chat`);
                     });
 
                     connection.on("AgentLeft", function (agentId) {
                         console.log('Agent left:', agentId);
                         addChatMessage(`${agentId} left the chat`, 'system-message');
+                        showToast('warning', '👋 Agent Left', `${agentId} left the chat`);
                     });
 
                     // Handle private messages
                     connection.on("ReceivePrivateMessage", function (senderName, senderId, message) {
                         console.log('Received private message:', senderName, message);
                         addPrivateMessage(`From ${senderName}: ${message}`, 'private-message');
+                        showToast('info', '🔒 Private Message', `From ${senderName}: ${message}`, 6000);
                     });
 
                     connection.on("PrivateMessageSent", function (targetAgentId, message) {
                         console.log('Private message sent to:', targetAgentId);
                         addPrivateMessage(`To ${targetAgentId}: ${message}`, 'private-sent');
+                        showToast('success', '📤 Message Sent', `Sent to ${targetAgentId}`, 3000);
                     });
 
                     connection.on("OnlineAgentsList", function (agents) {
@@ -431,7 +642,7 @@
                 if (response.ok) {
                     const result = await response.json();
                     document.getElementById('policyStatus').textContent = 'Policy created successfully!';
-                    addNotification(`Policy created: ${result.policy.Number} for ${policyData.customerName}`, 'notification');
+                    addNotification(`Policy created: ${result.policy.number} for ${policyData.customerName}`, 'notification');
                     
                     // Auto-increment customer name for next test
                     const currentName = policyData.customerName;
@@ -448,6 +659,86 @@
                 }
             } catch (error) {
                 console.error('Create policy failed:', error);
+                document.getElementById('policyStatus').textContent = `Failed: ${error.message}`;
+            }
+        }
+
+        // Terminate policy (triggers event)
+        async function terminatePolicy() {
+            const customerName = document.getElementById('customerName').value;
+            const terminateData = {
+                policyId: "POL-001",
+                policyNumber: `POL-${Date.now()}`,
+                customerName: customerName,
+                terminationReason: "Customer Request",
+                finalPremium: 1200.00,
+                terminatedBy: "Agent Smith"
+            };
+
+            try {
+                document.getElementById('policyStatus').textContent = 'Terminating policy...';
+                
+                const response = await fetch('http://localhost:5002/api/policy/terminate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(terminateData)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    document.getElementById('policyStatus').textContent = 'Policy terminated successfully!';
+                    addNotification(`Policy terminated: ${result.policy.PolicyNumber} for ${customerName}`, 'notification');
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to terminate policy');
+                }
+            } catch (error) {
+                console.error('Terminate policy failed:', error);
+                document.getElementById('policyStatus').textContent = `Failed: ${error.message}`;
+            }
+        }
+
+        // Activate product (triggers event)
+        async function activateProduct() {
+            const customerName = document.getElementById('customerName').value;
+            const productData = {
+                productName: "Premium Health Insurance",
+                productType: "Health",
+                policyId: "POL-001",
+                policyNumber: `POL-${Date.now()}`,
+                customerName: customerName,
+                productPremium: 2500.00,
+                activatedBy: "Agent Johnson",
+                productFeatures: {
+                    "Coverage": "Full Coverage",
+                    "Deductible": 500,
+                    "MaxBenefit": 100000
+                }
+            };
+
+            try {
+                document.getElementById('policyStatus').textContent = 'Activating product...';
+                
+                const response = await fetch('http://localhost:5002/api/policy/activate-product', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(productData)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    document.getElementById('policyStatus').textContent = 'Product activated successfully!';
+                    addNotification(`Product activated: ${result.product.ProductName} for ${customerName}`, 'notification');
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to activate product');
+                }
+            } catch (error) {
+                console.error('Activate product failed:', error);
                 document.getElementById('policyStatus').textContent = `Failed: ${error.message}`;
             }
         }
@@ -534,6 +825,25 @@
 
         function clearNotifications() {
             document.getElementById('notificationArea').innerHTML = '';
+            notificationCount = 0;
+            document.getElementById('notificationCounter').textContent = 'Notifications: 0';
+        }
+
+        // ⭐ TEST TOAST NOTIFICATIONS
+        function testToastNotifications() {
+            showToast('success', '✅ Success Test', 'This is a success notification!', 4000);
+            
+            setTimeout(() => {
+                showToast('warning', '⚠️ Warning Test', 'This is a warning notification!', 4000);
+            }, 1000);
+            
+            setTimeout(() => {
+                showToast('error', '❌ Error Test', 'This is an error notification!', 4000);
+            }, 2000);
+            
+            setTimeout(() => {
+                showToast('info', 'ℹ️ Info Test', 'This is an info notification with a longer message to test text wrapping!', 4000);
+            }, 3000);
         }
 
         // Handle Enter key in message inputs
@@ -741,6 +1051,157 @@
                 addNotification('5. Watch real-time notifications', 'system-message');
             }, 1000);
         });
+
+        // ⭐ TOAST NOTIFICATION SYSTEM
+        let notificationCount = 0;
+        let toastId = 0;
+
+        function showToast(type, title, message, duration = 5000) {
+            const toastContainer = getOrCreateToastContainer();
+            const toast = createToastElement(type, title, message, duration);
+            
+            toastContainer.appendChild(toast);
+            
+            // Auto remove after duration
+            setTimeout(() => {
+                removeToast(toast);
+            }, duration);
+            
+            // Play notification sound
+            playNotificationSound(type);
+            
+            // Update notification counter
+            updateNotificationCounter();
+        }
+
+        function getOrCreateToastContainer() {
+            let container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                container.className = 'toast-container';
+                document.body.appendChild(container);
+            }
+            return container;
+        }
+
+        function createToastElement(type, title, message, duration) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.id = `toast-${++toastId}`;
+            
+            toast.innerHTML = `
+                <div class="toast-header">
+                    <span class="toast-title">${title}</span>
+                    <button class="toast-close" onclick="removeToast(this.parentElement.parentElement)">&times;</button>
+                </div>
+                <div class="toast-body">${message}</div>
+                <div class="toast-progress"></div>
+            `;
+            
+            return toast;
+        }
+
+        function removeToast(toast) {
+            if (toast && toast.parentElement) {
+                toast.style.animation = 'slideOut 0.3s ease-out';
+                setTimeout(() => {
+                    if (toast.parentElement) {
+                        toast.parentElement.removeChild(toast);
+                    }
+                }, 300);
+            }
+        }
+
+        function playNotificationSound(type) {
+            // Create audio context for notification sounds
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                // Different frequencies for different notification types
+                const frequencies = {
+                    success: 800,
+                    warning: 600,
+                    error: 400,
+                    info: 1000
+                };
+                
+                oscillator.frequency.setValueAtTime(frequencies[type] || 800, audioContext.currentTime);
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            } catch (error) {
+                console.log('Audio notification not supported');
+            }
+        }
+
+        function updateNotificationCounter() {
+            notificationCount++;
+            document.getElementById('notificationCounter').textContent = `Notifications: ${notificationCount}`;
+            showNotificationBadge();
+        }
+
+        function showNotificationBadge() {
+            // Remove existing badge
+            const existingBadge = document.getElementById('notification-badge');
+            if (existingBadge) {
+                existingBadge.remove();
+            }
+            
+            // Create new badge
+            const badge = document.createElement('div');
+            badge.id = 'notification-badge';
+            badge.className = 'notification-badge';
+            badge.textContent = `${notificationCount} new notifications`;
+            document.body.appendChild(badge);
+            
+            // Auto remove badge after 3 seconds
+            setTimeout(() => {
+                if (badge.parentElement) {
+                    badge.remove();
+                }
+            }, 3000);
+        }
+
+        function clearAllToasts() {
+            const container = document.getElementById('toast-container');
+            if (container) {
+                container.innerHTML = '';
+            }
+            notificationCount = 0;
+        }
+
+        // ⭐ ENHANCED NOTIFICATION HANDLERS
+        function addNotificationEnhanced(message, type = 'info') {
+            // Add to notification area (existing functionality)
+            addNotification(message, type);
+            
+            // Show toast notification
+            const titles = {
+                'notification': '🔔 System Notification',
+                'system-message': '💬 System Message',
+                'agent-message': '👤 Agent Message',
+                'private-message': '🔒 Private Message',
+                'info': 'ℹ️ Information',
+                'success': '✅ Success',
+                'warning': '⚠️ Warning',
+                'error': '❌ Error'
+            };
+            
+            showToast(type === 'notification' ? 'info' : type, titles[type] || titles['info'], message);
+        }
     </script>
+
+    <!-- ⭐ TOAST CONTAINER (will be created dynamically) -->
+    
 </body>
 </html>

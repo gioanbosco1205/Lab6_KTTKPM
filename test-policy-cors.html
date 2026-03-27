@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Policy CORS</title>
+</head>
+<body>
+    <h1>Test Policy API CORS</h1>
+    <button onclick="testCreatePolicy()">Test Create Policy</button>
+    <div id="result"></div>
+
+    <script>
+        async function testCreatePolicy() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing...';
+
+            try {
+                const response = await fetch('http://localhost:5002/api/policy/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        customerName: 'Test Customer CORS'
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    resultDiv.innerHTML = `
+                        <h3>✅ SUCCESS!</h3>
+                        <p><strong>Policy Number:</strong> ${result.policy.number}</p>
+                        <p><strong>Customer:</strong> ${result.policy.customerName}</p>
+                        <p><strong>Premium:</strong> $${result.policy.premium}</p>
+                        <p><strong>Status:</strong> ${result.policy.status}</p>
+                        <p><strong>Event Published:</strong> ${result.eventPublished}</p>
+                    `;
+                } else {
+                    const error = await response.text();
+                    resultDiv.innerHTML = `<h3>❌ ERROR!</h3><p>${error}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<h3>❌ FETCH ERROR!</h3><p>${error.message}</p>`;
+                console.error('Error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

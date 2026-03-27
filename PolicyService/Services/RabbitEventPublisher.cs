@@ -1,6 +1,7 @@
 using RabbitMQ.Client;
 using System.Text;
 using Newtonsoft.Json;
+using PolicyService.Events;
 
 namespace PolicyService.Services;
 
@@ -23,7 +24,7 @@ public class RabbitEventPublisher
             using var channel = connection.CreateModel();
 
             var exchangeName = "policy.events";
-            var routingKey = "policy.created";
+            var routingKey = GetRoutingKey<T>();
 
             channel.ExchangeDeclare(exchange: exchangeName, type: ExchangeType.Topic, durable: true);
 
@@ -32,12 +33,23 @@ public class RabbitEventPublisher
 
             channel.BasicPublish(exchange: exchangeName, routingKey: routingKey, basicProperties: null, body: body);
             
-            _logger.LogInformation($"Published PolicyCreated event for policy: {json}");
+            _logger.LogInformation($"Published {typeof(T).Name} event with routing key '{routingKey}': {json}");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, $"Failed to publish message of type {typeof(T).Name}");
             throw;
         }
+    }
+
+    private string GetRoutingKey<T>()
+    {
+        return typeof(T).Name switch
+        {
+            nameof(PolicyCreated) => "policy.created",
+            nameof(PolicyTerminated) => "policy.terminated", 
+            nameof(ProductActivated) => "product.activated",
+            _ => "policy.unknown"
+        };
     }
 }
