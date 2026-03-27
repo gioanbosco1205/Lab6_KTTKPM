@@ -1,6 +1,4 @@
 using Polly;
-using RawRabbit.DependencyInjection.ServiceCollection;
-using RawRabbit.Instantiation;
 using Steeltoe.Discovery.Client;
 using PolicyService.Services;
 
@@ -12,16 +10,15 @@ builder.Services.AddControllers();
 builder.Services.AddSingleton<PricingClient>();
 
 // ⭐ RabbitMQ Configuration
-builder.Services.AddRawRabbit(new RawRabbitOptions
+builder.Services.AddSingleton<RabbitMQ.Client.IConnectionFactory>(sp =>
 {
-    ClientConfiguration = new RawRabbit.Configuration.RawRabbitConfiguration
+    return new RabbitMQ.Client.ConnectionFactory()
     {
-        Username = "guest",
-        Password = "guest",
-        Port = 5672,
-        VirtualHost = "/",
-        Hostnames = { "localhost" }
-    }
+        HostName = builder.Configuration.GetValue<string>("RabbitMQ:Host") ?? "localhost",
+        Port = builder.Configuration.GetValue<int>("RabbitMQ:Port", 5672),
+        UserName = builder.Configuration.GetValue<string>("RabbitMQ:Username") ?? "guest",
+        Password = builder.Configuration.GetValue<string>("RabbitMQ:Password") ?? "guest"
+    };
 });
 
 builder.Services.AddScoped<RabbitEventPublisher>();

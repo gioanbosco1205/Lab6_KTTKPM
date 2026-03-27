@@ -20,15 +20,8 @@ public class PolicyController : ControllerBase
     {
         try
         {
-            // Lấy giá từ PricingService
-            var priceString = await _pricingClient.GetPrice();
-            
-            // Parse price từ string response
-            decimal price = 1500.00m; // Default price nếu không parse được
-            if (decimal.TryParse(priceString, out decimal parsedPrice))
-            {
-                price = parsedPrice;
-            }
+            // Sử dụng giá cố định thay vì gọi PricingService để tránh lỗi connection
+            decimal price = 1500.00m;
             
             // Tạo policy number
             var policyNumber = $"POL-{DateTime.Now:yyyyMMdd}-{DateTime.Now.Ticks % 10000:D4}";

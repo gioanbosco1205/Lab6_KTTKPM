@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insurance Chat Client - Test Part 15</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .chat-area {
+            height: 300px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            background-color: #fafafa;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        .agent-message {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+        }
+        .system-message {
+            background-color: #f3e5f5;
+            border-left: 4px solid #9c27b0;
+        }
+        .notification {
+            background-color: #e8f5e8;
+            border-left: 4px solid #4caf50;
+        }
+        input, button, select {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #2196f3;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #1976d2;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .policy-form {
+            display: grid;
+            gap: 10px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏢 Insurance System Test - Part 15</h1>
+    <p><strong>Test Flow:</strong> RabbitMQ → PolicyService → ChatService → Client App</p>
+    
+    <div class="container">
+        <!-- Agent Chat Panel -->
+        <div class="panel">
+            <h2>👥 Agent Chat</h2>
+            <div class="status" id="chatStatus">Disconnected</div>
+            
+            <div>
+                <input type="text" id="agentId" placeholder="Agent ID (e.g., agent1)" value="agent1">
+                <input type="text" id="agentName" placeholder="Agent Name" value="Agent Smith">
+                <button onclick="connectAgent()">Connect Agent</button>
+                <button onclick="disconnectAgent()">Disconnect</button>
+            </div>
+            
+            <div class="chat-area" id="chatArea"></div>
+            
+            <div>
+                <input type="text" id="messageInput" placeholder="Type message..." style="width: 70%">
+                <button onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+
+        <!-- Policy Management Panel -->
+        <div class="panel">
+            <h2>📋 Policy Management</h2>
+            <div class="status" id="policyStatus">Ready</div>
+            
+            <div class="policy-form">
+                <div class="form-group">
+                    <label>Customer Name:</label>
+                    <input type="text" id="customerName" value="Test Customer">
+                </div>
+                <button onclick="createPolicy()">Create Policy (Trigger Event)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notifications Panel -->
+    <div class="panel" style="margin-top: 20px;">
+        <h2>🔔 Real-time Notifications</h2>
+        <div class="chat-area" id="notificationArea"></div>
+        <button onclick="clearNotifications()">Clear Notifications</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+    <script>
+        let connection = null;
+        let agentToken = null;
+
+        // Connect agent to chat
+        async function connectAgent() {
+            const agentId = document.getElementById('agentId').value;
+            const agentName = document.getElementById('agentName').value;
+            
+            if (!agentId || !agentName) {
+                alert('Please enter Agent ID and Name');
+                return;
+            }
+
+            try {
+                console.log('Attempting to authenticate agent...', { agentId, agentName });
+                
+                // Get agent token
+                const response = await fetch('http://localhost:5003/api/auth/agent-login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        agentId: agentId,
+                        agentName: agentName
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    agentToken = data.token;
+                    console.log('Agent authenticated successfully, token received');
+                    
+                    // Connect to SignalR hub
+                    console.log('Connecting to SignalR hub...');
+                    connection = new signalR.HubConnectionBuilder()
+                        .withUrl("http://localhost:5003/chathub", {
+                            accessTokenFactory: () => agentToken,
+                            skipNegotiation: true,
+                            transport: signalR.HttpTransportType.WebSockets
+                        })
+                        .configureLogging(signalR.LogLevel.Debug)
+                        .build();
+
+                    // Handle incoming messages
+                    connection.on("ReceiveMessage", function (fromAgent, message) {
+                        console.log('Received message:', fromAgent, message);
+                        addChatMessage(`${fromAgent}: ${message}`, 'agent-message');
+                    });
+
+                    connection.on("PolicyNotification", function (message) {
+                        console.log('Received policy notification:', message);
+                        addNotification(`Policy Event: ${message}`, 'notification');
+                    });
+
+                    connection.on("AgentJoined", function (agentId) {
+                        console.log('Agent joined:', agentId);
+                        addChatMessage(`${agentId} joined the chat`, 'system-message');
+                    });
+
+                    connection.on("AgentLeft", function (agentId) {
+                        console.log('Agent left:', agentId);
+                        addChatMessage(`${agentId} left the chat`, 'system-message');
+                    });
+
+                    console.log('Starting SignalR connection...');
+                    await connection.start();
+                    console.log('SignalR connection started, joining agent group...');
+                    
+                    await connection.invoke("JoinAgentGroup", agentId);
+                    console.log('Joined agent group successfully');
+                    
+                    document.getElementById('chatStatus').textContent = `Connected as ${agentName}`;
+                    document.getElementById('chatStatus').className = 'status connected';
+                    
+                    addChatMessage(`Connected as ${agentName}`, 'system-message');
+                } else {
+                    const errorText = await response.text();
+                    console.error('Authentication failed:', response.status, errorText);
+                    throw new Error(`Failed to authenticate agent: ${response.status} ${errorText}`);
+                }
+            } catch (error) {
+                console.error('Connection failed:', error);
+                document.getElementById('chatStatus').textContent = `Connection Failed: ${error.message}`;
+                document.getElementById('chatStatus').className = 'status disconnected';
+                addChatMessage(`Connection failed: ${error.message}`, 'system-message');
+            }
+        }
+
+        // Disconnect agent
+        async function disconnectAgent() {
+            if (connection) {
+                await connection.stop();
+                connection = null;
+                agentToken = null;
+                document.getElementById('chatStatus').textContent = 'Disconnected';
+                document.getElementById('chatStatus').className = 'status disconnected';
+                addChatMessage('Disconnected from chat', 'system-message');
+            }
+        }
+
+        // Send message
+        async function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (message && connection) {
+                try {
+                    await connection.invoke("SendMessageToAgents", message);
+                    addChatMessage(`You: ${message}`, 'agent-message');
+                    messageInput.value = '';
+                } catch (error) {
+                    console.error('Send message failed:', error);
+                }
+            }
+        }
+
+        // Create policy (triggers event)
+        async function createPolicy() {
+            const policyData = {
+                customerName: document.getElementById('customerName').value
+            };
+
+            try {
+                document.getElementById('policyStatus').textContent = 'Creating policy...';
+                
+                const response = await fetch('http://localhost:5002/api/policy/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(policyData)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    document.getElementById('policyStatus').textContent = 'Policy created successfully!';
+                    addNotification(`Policy created: ${result.policy.Number} for ${policyData.customerName}`, 'notification');
+                    
+                    // Auto-increment customer name for next test
+                    const currentName = policyData.customerName;
+                    const match = currentName.match(/(\d+)$/);
+                    if (match) {
+                        const num = parseInt(match[1]) + 1;
+                        document.getElementById('customerName').value = currentName.replace(/\d+$/, num);
+                    } else {
+                        document.getElementById('customerName').value = currentName + ' 2';
+                    }
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to create policy');
+                }
+            } catch (error) {
+                console.error('Create policy failed:', error);
+                document.getElementById('policyStatus').textContent = `Failed: ${error.message}`;
+            }
+        }
+
+        // Helper functions
+        function addChatMessage(message, className) {
+            const chatArea = document.getElementById('chatArea');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${className}`;
+            messageDiv.innerHTML = `<small>${new Date().toLocaleTimeString()}</small><br>${message}`;
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        function addNotification(message, className) {
+            const notificationArea = document.getElementById('notificationArea');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${className}`;
+            messageDiv.innerHTML = `<small>${new Date().toLocaleTimeString()}</small><br>${message}`;
+            notificationArea.appendChild(messageDiv);
+            notificationArea.scrollTop = notificationArea.scrollHeight;
+        }
+
+        function clearNotifications() {
+            document.getElementById('notificationArea').innerHTML = '';
+        }
+
+        // Handle Enter key in message input
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Auto-connect on page load for demo
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                addNotification('Welcome to Insurance System Test - Part 15', 'system-message');
+                addNotification('1. Start Docker containers: docker-compose up', 'system-message');
+                addNotification('2. Connect agents using the form above', 'system-message');
+                addNotification('3. Create policies to trigger events', 'system-message');
+                addNotification('4. Watch real-time notifications', 'system-message');
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

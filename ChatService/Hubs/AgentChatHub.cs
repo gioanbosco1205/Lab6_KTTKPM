@@ -10,6 +10,27 @@ public class AgentChatHub : Hub
         await Clients.All.SendAsync("ReceiveMessage", Context.User?.Identity?.Name ?? "Anonymous", message);
     }
 
+    public async Task SendMessageToAgents(string message)
+    {
+        var agentName = Context.User?.Identity?.Name ?? "Anonymous";
+        await Clients.Group("Agents").SendAsync("ReceiveMessage", agentName, message);
+    }
+
+    public async Task JoinAgentGroup(string agentId)
+    {
+        await Groups.AddToGroupAsync(Context.ConnectionId, "Agents");
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"Agent_{agentId}");
+        await Clients.Group("Agents").SendAsync("AgentJoined", agentId);
+        await Clients.Caller.SendAsync("ReceiveNotification", $"Joined as agent {agentId}");
+    }
+
+    public async Task LeaveAgentGroup(string agentId)
+    {
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, "Agents");
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"Agent_{agentId}");
+        await Clients.Group("Agents").SendAsync("AgentLeft", agentId);
+    }
+
     // ⭐ PHẦN 14 - SignalR Notification Methods
     public async Task JoinNotificationGroup(string groupName = "PolicyNotifications")
     {

@@ -1,64 +1,183 @@
+version: '3.8'
+
 services:
+  # RabbitMQ - Message Queue
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - microservices-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Redis - Caching
   redis:
-    image: redis:7-alpine
-    container_name: redis-cache
+    image: redis:alpine
+    container_name: redis
     ports:
       - "6379:6379"
-    command: redis-server --appendonly yes
+    networks:
+      - microservices-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # PostgreSQL - Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: lab_netmicro_payments
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234567890aA@
     volumes:
-      - redis-data:/data
-    restart: always
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - microservices-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d lab_netmicro_payments"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
-  eureka:
-    build: ./eureka-server
-    container_name: eureka-server
-    ports:
-      - "8761:8761"
-
+  # Auth Service
   authservice:
-    build: ./AuthService
-    container_name: auth-service
+    build:
+      context: ./AuthService
+      dockerfile: Dockerfile
+    container_name: authservice
     ports:
-      - "5060:8080"
-    restart: always
-
-  pricingservice:
-    build: ./PricingService
-    container_name: pricing-service
-    ports:
-      - "5001:8080"
+      - "5001:80"
     environment:
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka/
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+    networks:
+      - microservices-network
     depends_on:
-      - eureka
-    restart: always
+      postgres:
+        condition: service_healthy
 
+  # Policy Service
   policyservice:
-    build: ./PolicyService
-    container_name: policy-service
+    build:
+      context: ./PolicyService
+      dockerfile: Dockerfile
+    container_name: policyservice
     ports:
-      - "5002:8080"
+      - "5002:80"
     environment:
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka/
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - RabbitMQ__Host=rabbitmq
+      - ConnectionStrings__PgConnection=Host=postgres;Port=5432;Database=lab_netmicro_payments;Username=postgres;Password=1234567890aA@
+    networks:
+      - microservices-network
     depends_on:
-      - eureka
-    restart: always
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
-  apigateway:
-    build: ./ApiGateway
-    container_name: api-gateway
+  # Chat Service
+  chatservice:
+    build:
+      context: ./ChatService
+      dockerfile: Dockerfile
+    container_name: chatservice
     ports:
-      - "5050:8080"
+      - "5003:80"
     environment:
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka/
-      - ConnectionStrings__Redis=redis:6379
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - RabbitMQ__Host=rabbitmq
+      - JWT__Key=your-super-secret-jwt-key-that-is-at-least-32-characters-long
+      - JWT__Issuer=ChatService
+      - JWT__Audience=ChatService
+    networks:
+      - microservices-network
     depends_on:
-      - redis
-      - eureka
-      - authservice
-      - pricingservice
-      - policyservice
-    restart: always
+      rabbitmq:
+        condition: service_healthy
+
+  # Payment Service
+  paymentservice:
+    build:
+      context: ./PaymentService
+      dockerfile: Dockerfile
+    container_name: paymentservice
+    ports:
+      - "5004:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__PgConnection=Host=postgres;Port=5432;Database=lab_netmicro_payments;Username=postgres;Password=1234567890aA@
+    networks:
+      - microservices-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Pricing Service
+  pricingservice:
+    build:
+      context: ./PricingService
+      dockerfile: Dockerfile
+    container_name: pricingservice
+    ports:
+      - "5005:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+    networks:
+      - microservices-network
+
+  # API Gateway
+  apigateway:
+    build:
+      context: ./ApiGateway
+      dockerfile: Dockerfile
+    container_name: apigateway
+    ports:
+      - "8080:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - Redis__ConnectionString=redis:6379
+    networks:
+      - microservices-network
+    depends_on:
+      redis:
+        condition: service_healthy
+      authservice:
+        condition: service_started
+      policyservice:
+        condition: service_started
+      chatservice:
+        condition: service_started
+      paymentservice:
+        condition: service_started
+      pricingservice:
+        condition: service_started
 
 volumes:
-  redis-data:
+  rabbitmq_data:
+  postgres_data:
+
+networks:
+  microservices-network:
+    driver: bridge

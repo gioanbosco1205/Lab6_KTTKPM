@@ -1,18 +1,43 @@
-using RawRabbit;
+using RabbitMQ.Client;
+using System.Text;
+using Newtonsoft.Json;
 
 namespace PolicyService.Services;
 
 public class RabbitEventPublisher
 {
-    private readonly IBusClient busClient;
+    private readonly IConnectionFactory _connectionFactory;
+    private readonly ILogger<RabbitEventPublisher> _logger;
 
-    public RabbitEventPublisher(IBusClient busClient)
+    public RabbitEventPublisher(IConnectionFactory connectionFactory, ILogger<RabbitEventPublisher> logger)
     {
-        this.busClient = busClient;
+        _connectionFactory = connectionFactory;
+        _logger = logger;
     }
 
-    public Task PublishMessage<T>(T message)
+    public async Task PublishMessage<T>(T message)
     {
-        return busClient.PublishAsync(message);
+        try
+        {
+            using var connection = _connectionFactory.CreateConnection();
+            using var channel = connection.CreateModel();
+
+            var exchangeName = "policy.events";
+            var routingKey = "policy.created";
+
+            channel.ExchangeDeclare(exchange: exchangeName, type: ExchangeType.Topic, durable: true);
+
+            var json = JsonConvert.SerializeObject(message);
+            var body = Encoding.UTF8.GetBytes(json);
+
+            channel.BasicPublish(exchange: exchangeName, routingKey: routingKey, basicProperties: null, body: body);
+            
+            _logger.LogInformation($"Published PolicyCreated event for policy: {json}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to publish message of type {typeof(T).Name}");
+            throw;
+        }
     }
 }

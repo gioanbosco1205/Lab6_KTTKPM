@@ -36,7 +36,26 @@ public class AuthController : ControllerBase
         });
     }
 
-    [HttpPost("validate")]
+    [HttpPost("agent-login")]
+    public IActionResult AgentLogin([FromBody] AgentLoginRequest request)
+    {
+        // Đây chỉ là demo - trong thực tế bạn cần validate agent credentials
+        if (string.IsNullOrEmpty(request.AgentId) || string.IsNullOrEmpty(request.AgentName))
+        {
+            return BadRequest("AgentId và AgentName không được để trống");
+        }
+
+        // Demo: chấp nhận bất kỳ agent nào
+        var token = _jwtService.GenerateToken(request.AgentId, request.AgentName);
+
+        return Ok(new AgentLoginResponse
+        {
+            Token = token,
+            AgentId = request.AgentId,
+            AgentName = request.AgentName,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(60)
+        });
+    }
     public IActionResult ValidateToken([FromBody] ValidateTokenRequest request)
     {
         var principal = _jwtService.ValidateToken(request.Token);
@@ -75,4 +94,17 @@ public class LoginResponse
 public class ValidateTokenRequest
 {
     public string Token { get; set; } = string.Empty;
+}
+public class AgentLoginRequest
+{
+    public string AgentId { get; set; } = string.Empty;
+    public string AgentName { get; set; } = string.Empty;
+}
+
+public class AgentLoginResponse
+{
+    public string Token { get; set; } = string.Empty;
+    public string AgentId { get; set; } = string.Empty;
+    public string AgentName { get; set; } = string.Empty;
+    public DateTime ExpiresAt { get; set; }
 }

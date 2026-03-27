@@ -1,0 +1,54 @@
+### PHẦN 15 - TEST SYSTEM
+### Test theo thứ tự: RabbitMQ -> PolicyService -> ChatService -> Client App
+
+### 1. Test RabbitMQ Management (should be accessible)
+GET http://localhost:15672
+Authorization: Basic guest:guest
+
+### 2. Test Auth Service - Get JWT Token
+POST http://localhost:5001/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "agent1",
+  "password": "password123"
+}
+
+### 3. Test Policy Service - Create Policy (triggers event)
+POST http://localhost:5002/api/policy/create
+Content-Type: application/json
+
+{
+  "customerName": "Nguyen Van A"
+}
+
+### 4. Test Chat Service - Agent Authentication
+POST http://localhost:5003/api/auth/agent-login
+Content-Type: application/json
+
+{
+  "agentId": "agent1",
+  "agentName": "Agent Smith"
+}
+
+### 5. Test Chat Service - Get Agent Token
+POST http://localhost:5003/api/auth/agent-login
+Content-Type: application/json
+
+{
+  "agentId": "agent2", 
+  "agentName": "Agent Johnson"
+}
+
+### 6. Test API Gateway - Policy through Gateway
+POST http://localhost:8080/api/policy/create
+Content-Type: application/json
+
+{
+  "customerName": "Tran Thi B"
+}
+
+### 7. Test Chat Service WebSocket Connection (use browser or WebSocket client)
+# Connect to: ws://localhost:5003/chathub
+# Send: {"protocol":"json","version":1}
+# Join group: {"type":1,"target":"JoinAgentGroup","arguments":["agent1"]}

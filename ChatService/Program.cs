@@ -1,9 +1,8 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using RawRabbit.DependencyInjection.ServiceCollection;
-using RawRabbit.Configuration;
 using ChatService.Services;
+using ChatService.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,8 +10,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 
 // Cấu hình CORS
-var allowedOrigins = builder.Configuration.GetSection("AppSettings:AllowedChatOrigins").Get<string[]>() ?? new[] { "http://localhost:8080" };
-
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("CorsPolicy", builder =>
@@ -20,7 +17,7 @@ builder.Services.AddCors(options =>
         builder.AllowAnyHeader()
                .AllowAnyMethod()
                .AllowCredentials()
-               .WithOrigins(allowedOrigins);
+               .SetIsOriginAllowed(origin => true); // Allow all origins in development
     });
 });
 
@@ -76,16 +73,16 @@ builder.Services.AddScoped<ChatService.Services.RabbitEventPublisher>();
 builder.Services.AddScoped<PolicyEventSubscriber>();
 builder.Services.AddHostedService<EventSubscriberHostedService>();
 
-// Cấu hình RabbitMQ
-builder.Services.AddRawRabbit(new RawRabbitOptions
+// Cấu hình RabbitMQ Connection
+builder.Services.AddSingleton<RabbitMQ.Client.IConnectionFactory>(sp =>
 {
-    ClientConfiguration = new RawRabbitConfiguration
+    return new RabbitMQ.Client.ConnectionFactory()
     {
-        Username = "guest",
-        Password = "guest",
-        Port = 5672,
-        Hostnames = { "localhost" }
-    }
+        HostName = builder.Configuration.GetValue<string>("RabbitMQ:Host") ?? "localhost",
+        Port = builder.Configuration.GetValue<int>("RabbitMQ:Port", 5672),
+        UserName = builder.Configuration.GetValue<string>("RabbitMQ:Username") ?? "guest",
+        Password = builder.Configuration.GetValue<string>("RabbitMQ:Password") ?? "guest"
+    };
 });
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -101,7 +98,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// Disable HTTPS redirection for development
+// app.UseHttpsRedirection();
 
 // Sử dụng CORS
 app.UseCors("CorsPolicy");
@@ -114,6 +112,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 // Map SignalR Hub
-app.MapHub<ChatService.Hubs.AgentChatHub>("/agentsChat");
+app.MapHub<AgentChatHub>("/chathub");
 
 app.Run();
