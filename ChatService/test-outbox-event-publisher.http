@@ -1,0 +1,41 @@
+### Test OutboxEventPublisher - Publish PolicyCreated Event
+POST http://localhost:5003/api/event/publish-policy-created
+Content-Type: application/json
+
+{
+  "policyId": "POL-001",
+  "policyNumber": "POL-2024-001",
+  "customerId": "CUST-001",
+  "productId": "PROD-LIFE-001",
+  "premiumAmount": 1000000
+}
+
+### Test OutboxEventPublisher - Publish Another Event
+POST http://localhost:5003/api/event/publish-policy-created
+Content-Type: application/json
+
+{
+  "policyId": "POL-002",
+  "policyNumber": "POL-2024-002",
+  "customerId": "CUST-002",
+  "productId": "PROD-HEALTH-001",
+  "premiumAmount": 500000
+}
+
+### Check Outbox Status
+GET http://localhost:5003/api/event/outbox/status
+
+### Test Multiple Events
+POST http://localhost:5003/api/event/publish-policy-created
+Content-Type: application/json
+
+{
+  "policyId": "POL-003",
+  "policyNumber": "POL-2024-003",
+  "customerId": "CUST-003",
+  "productId": "PROD-AUTO-001",
+  "premiumAmount": 750000
+}
+
+### Check Outbox Status Again
+GET http://localhost:5003/api/event/outbox/status

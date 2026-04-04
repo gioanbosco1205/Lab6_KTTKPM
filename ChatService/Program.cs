@@ -84,6 +84,8 @@ builder.Services.AddScoped<ChatService.Services.IJwtService, ChatService.Service
 builder.Services.AddSingleton<IRabbitEventPublisher, RabbitEventPublisher>();
 
 // ⭐ PHẦN MỚI - Đăng ký Outbox Services
+builder.Services.AddScoped<ChatService.Services.ISession, DatabaseSession>();
+builder.Services.AddScoped<IEventPublisher, OutboxEventPublisher>();
 builder.Services.AddScoped<IOutboxService, OutboxService>();
 builder.Services.AddScoped<ITransactionalEventService, TransactionalEventService>();
 builder.Services.AddHostedService<OutboxProcessorService>();
