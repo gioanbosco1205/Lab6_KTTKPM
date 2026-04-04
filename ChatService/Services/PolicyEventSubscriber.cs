@@ -5,16 +5,19 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Text;
 using Newtonsoft.Json;
+using Polly;
+using Polly.Retry;
 
 namespace ChatService.Services;
 
-public class PolicyEventSubscriber
+public class PolicyEventSubscriber : IDisposable
 {
     private readonly IConnectionFactory _connectionFactory;
     private readonly IHubContext<AgentChatHub> _hubContext;
     private readonly ILogger<PolicyEventSubscriber> _logger;
     private IConnection? _connection;
     private IModel? _channel;
+    private readonly RetryPolicy _retryPolicy;
 
     public PolicyEventSubscriber(
         IConnectionFactory connectionFactory, 
@@ -24,63 +27,102 @@ public class PolicyEventSubscriber
         _connectionFactory = connectionFactory;
         _hubContext = hubContext;
         _logger = logger;
+
+        _retryPolicy = Policy
+            .Handle<Exception>()
+            .WaitAndRetryForever(retryAttempt => TimeSpan.FromSeconds(Math.Min(Math.Pow(2, retryAttempt), 30)),
+                (exception, timeSpan, retryCount, context) =>
+                {
+                    _logger.LogWarning($"Retry {retryCount} failed to connect to RabbitMQ. Waiting {timeSpan} before next retry. Exception: {exception.Message}");
+                });
     }
 
     public async Task StartAsync()
     {
         _logger.LogInformation("Starting PolicyEventSubscriber...");
 
+        await Task.Run(() => 
+        {
+            _retryPolicy.Execute(() =>
+            {
+                Connect();
+            });
+        });
+    }
+
+    private void Connect()
+    {
+        _logger.LogInformation("Attempting to connect to RabbitMQ...");
+
         try
         {
-            _connection = _connectionFactory.CreateConnection();
-            _channel = _connection.CreateModel();
-
-            // Declare exchange and queues
-            _channel.ExchangeDeclare(exchange: "policy.events", type: ExchangeType.Topic, durable: true);
-            
-            // Queue for PolicyCreated events
-            _channel.QueueDeclare(queue: "policy.created.chatservice", durable: true, exclusive: false, autoDelete: false);
-            _channel.QueueBind(queue: "policy.created.chatservice", exchange: "policy.events", routingKey: "policy.created");
-
-            // Queue for PolicyTerminated events
-            _channel.QueueDeclare(queue: "policy.terminated.chatservice", durable: true, exclusive: false, autoDelete: false);
-            _channel.QueueBind(queue: "policy.terminated.chatservice", exchange: "policy.events", routingKey: "policy.terminated");
-
-            // Queue for ProductActivated events
-            _channel.QueueDeclare(queue: "product.activated.chatservice", durable: true, exclusive: false, autoDelete: false);
-            _channel.QueueBind(queue: "product.activated.chatservice", exchange: "policy.events", routingKey: "product.activated");
-
-            // Consumer for PolicyCreated
-            var policyCreatedConsumer = new EventingBasicConsumer(_channel);
-            policyCreatedConsumer.Received += async (model, ea) =>
-            {
-                await ProcessMessage<PolicyCreated>(ea, ProcessPolicyCreatedEvent);
-            };
-            _channel.BasicConsume(queue: "policy.created.chatservice", autoAck: false, consumer: policyCreatedConsumer);
-
-            // Consumer for PolicyTerminated
-            var policyTerminatedConsumer = new EventingBasicConsumer(_channel);
-            policyTerminatedConsumer.Received += async (model, ea) =>
-            {
-                await ProcessMessage<PolicyTerminated>(ea, ProcessPolicyTerminatedEvent);
-            };
-            _channel.BasicConsume(queue: "policy.terminated.chatservice", autoAck: false, consumer: policyTerminatedConsumer);
-
-            // Consumer for ProductActivated
-            var productActivatedConsumer = new EventingBasicConsumer(_channel);
-            productActivatedConsumer.Received += async (model, ea) =>
-            {
-                await ProcessMessage<ProductActivated>(ea, ProcessProductActivatedEvent);
-            };
-            _channel.BasicConsume(queue: "product.activated.chatservice", autoAck: false, consumer: productActivatedConsumer);
-
-            _logger.LogInformation("PolicyEventSubscriber started successfully");
+            _channel?.Dispose();
+            _connection?.Dispose();
         }
-        catch (Exception ex)
+        catch { /* Ignore disposal errors */ }
+
+        _connection = _connectionFactory.CreateConnection();
+        _channel = _connection.CreateModel();
+
+        _connection.ConnectionShutdown += OnConnectionShutdown;
+
+        // Declare exchange and queues
+        _channel.ExchangeDeclare(exchange: "policy.events", type: ExchangeType.Topic, durable: true);
+        
+        SetupConsumers();
+
+        _logger.LogInformation("PolicyEventSubscriber connected and consumers setup successfully");
+    }
+
+    private void SetupConsumers()
+    {
+        if (_channel == null) return;
+
+        // Queue for PolicyCreated events
+        _channel.QueueDeclare(queue: "policy.created.chatservice", durable: true, exclusive: false, autoDelete: false);
+        _channel.QueueBind(queue: "policy.created.chatservice", exchange: "policy.events", routingKey: "policy.created");
+
+        // Queue for PolicyTerminated events
+        _channel.QueueDeclare(queue: "policy.terminated.chatservice", durable: true, exclusive: false, autoDelete: false);
+        _channel.QueueBind(queue: "policy.terminated.chatservice", exchange: "policy.events", routingKey: "policy.terminated");
+
+        // Queue for ProductActivated events
+        _channel.QueueDeclare(queue: "product.activated.chatservice", durable: true, exclusive: false, autoDelete: false);
+        _channel.QueueBind(queue: "product.activated.chatservice", exchange: "policy.events", routingKey: "product.activated");
+
+        // Consumer for PolicyCreated
+        var policyCreatedConsumer = new EventingBasicConsumer(_channel);
+        policyCreatedConsumer.Received += async (model, ea) =>
         {
-            _logger.LogError(ex, "Failed to start PolicyEventSubscriber");
-            throw;
-        }
+            await ProcessMessage<PolicyCreated>(ea, ProcessPolicyCreatedEvent);
+        };
+        _channel.BasicConsume(queue: "policy.created.chatservice", autoAck: false, consumer: policyCreatedConsumer);
+
+        // Consumer for PolicyTerminated
+        var policyTerminatedConsumer = new EventingBasicConsumer(_channel);
+        policyTerminatedConsumer.Received += async (model, ea) =>
+        {
+            await ProcessMessage<PolicyTerminated>(ea, ProcessPolicyTerminatedEvent);
+        };
+        _channel.BasicConsume(queue: "policy.terminated.chatservice", autoAck: false, consumer: policyTerminatedConsumer);
+
+        // Consumer for ProductActivated
+        var productActivatedConsumer = new EventingBasicConsumer(_channel);
+        productActivatedConsumer.Received += async (model, ea) =>
+        {
+            await ProcessMessage<ProductActivated>(ea, ProcessProductActivatedEvent);
+        };
+        _channel.BasicConsume(queue: "product.activated.chatservice", autoAck: false, consumer: productActivatedConsumer);
+    }
+
+    private void OnConnectionShutdown(object? sender, ShutdownEventArgs e)
+    {
+        _logger.LogWarning($"RabbitMQ connection lost. Reason: {e.ReplyText}. Attempting to reconnect...");
+        
+        _retryPolicy.Execute(() =>
+        {
+            Connect();
+        });
     }
 
     private async Task ProcessMessage<T>(BasicDeliverEventArgs ea, Func<T, Task> processor)
@@ -101,7 +143,11 @@ public class PolicyEventSubscriber
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing message");
-            _channel?.BasicNack(deliveryTag: ea.DeliveryTag, multiple: false, requeue: true);
+            try
+            {
+                _channel?.BasicNack(deliveryTag: ea.DeliveryTag, multiple: false, requeue: true);
+            }
+            catch { /* Ignore Nack errors if channel is closed */ }
         }
     }
 
@@ -169,7 +215,7 @@ public class PolicyEventSubscriber
         {
             _logger.LogInformation($"Received ProductActivated event: {msg.ProductName} for policy {msg.PolicyNumber}");
 
-            var featuresText = msg.ProductFeatures.Any() 
+            var featuresText = msg.ProductFeatures != null && msg.ProductFeatures.Any() 
                 ? string.Join(", ", msg.ProductFeatures.Select(kv => $"{kv.Key}: {kv.Value}"))
                 : "Standard features";
 
@@ -239,7 +285,11 @@ public class PolicyEventSubscriber
 
     public void Dispose()
     {
-        _channel?.Close();
-        _connection?.Close();
+        if (_connection != null)
+        {
+            _connection.ConnectionShutdown -= OnConnectionShutdown;
+        }
+        _channel?.Dispose();
+        _connection?.Dispose();
     }
 }

@@ -81,7 +81,7 @@ builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Progr
 builder.Services.AddScoped<ChatService.Services.IJwtService, ChatService.Services.JwtService>();
 
 // Đăng ký RabbitEventPublisher
-builder.Services.AddScoped<ChatService.Services.RabbitEventPublisher>();
+builder.Services.AddSingleton<ChatService.Services.RabbitEventPublisher>();
 
 // ⭐ PHẦN 13 - Đăng ký Event Subscriber Services
 builder.Services.AddScoped<PolicyEventSubscriber>();
@@ -95,7 +95,9 @@ builder.Services.AddSingleton<RabbitMQ.Client.IConnectionFactory>(sp =>
         HostName = builder.Configuration.GetValue<string>("RabbitMQ:Host") ?? "localhost",
         Port = builder.Configuration.GetValue<int>("RabbitMQ:Port", 5672),
         UserName = builder.Configuration.GetValue<string>("RabbitMQ:Username") ?? "guest",
-        Password = builder.Configuration.GetValue<string>("RabbitMQ:Password") ?? "guest"
+        Password = builder.Configuration.GetValue<string>("RabbitMQ:Password") ?? "guest",
+        AutomaticRecoveryEnabled = true,
+        NetworkRecoveryInterval = TimeSpan.FromSeconds(10)
     };
 });
 

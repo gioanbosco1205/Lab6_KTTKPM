@@ -28,11 +28,13 @@ builder.Services.AddSingleton<RabbitMQ.Client.IConnectionFactory>(sp =>
         HostName = builder.Configuration.GetValue<string>("RabbitMQ:Host") ?? "localhost",
         Port = builder.Configuration.GetValue<int>("RabbitMQ:Port", 5672),
         UserName = builder.Configuration.GetValue<string>("RabbitMQ:Username") ?? "guest",
-        Password = builder.Configuration.GetValue<string>("RabbitMQ:Password") ?? "guest"
+        Password = builder.Configuration.GetValue<string>("RabbitMQ:Password") ?? "guest",
+        AutomaticRecoveryEnabled = true,
+        NetworkRecoveryInterval = TimeSpan.FromSeconds(10)
     };
 });
 
-builder.Services.AddScoped<RabbitEventPublisher>();
+builder.Services.AddSingleton<RabbitEventPublisher>();
 
 var app = builder.Build();
 
