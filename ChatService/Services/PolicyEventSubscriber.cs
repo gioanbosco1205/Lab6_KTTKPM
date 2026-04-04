@@ -31,9 +31,9 @@ public class PolicyEventSubscriber : IDisposable
         _retryPolicy = Policy
             .Handle<Exception>()
             .WaitAndRetryForever(retryAttempt => TimeSpan.FromSeconds(Math.Min(Math.Pow(2, retryAttempt), 30)),
-                (exception, timeSpan, retryCount, context) =>
+                (exception, timeSpan) =>
                 {
-                    _logger.LogWarning($"Retry {retryCount} failed to connect to RabbitMQ. Waiting {timeSpan} before next retry. Exception: {exception.Message}");
+                    _logger.LogWarning($"Failed to connect to RabbitMQ. Waiting {timeSpan} before next retry. Exception: {exception.Message}");
                 });
     }
 

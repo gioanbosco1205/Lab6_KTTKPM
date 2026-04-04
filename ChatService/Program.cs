@@ -81,7 +81,12 @@ builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Progr
 builder.Services.AddScoped<ChatService.Services.IJwtService, ChatService.Services.JwtService>();
 
 // Đăng ký RabbitEventPublisher
-builder.Services.AddSingleton<ChatService.Services.RabbitEventPublisher>();
+builder.Services.AddSingleton<IRabbitEventPublisher, RabbitEventPublisher>();
+
+// ⭐ PHẦN MỚI - Đăng ký Outbox Services
+builder.Services.AddScoped<IOutboxService, OutboxService>();
+builder.Services.AddScoped<ITransactionalEventService, TransactionalEventService>();
+builder.Services.AddHostedService<OutboxProcessorService>();
 
 // ⭐ PHẦN 13 - Đăng ký Event Subscriber Services
 builder.Services.AddScoped<PolicyEventSubscriber>();

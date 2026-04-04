@@ -127,3 +127,8 @@
 /Users/minhkhanhnguyen/Downloads/KTTKPM/ChatService/bin/Debug/net8.0/tr/Microsoft.CodeAnalysis.Workspaces.resources.dll
 /Users/minhkhanhnguyen/Downloads/KTTKPM/ChatService/bin/Debug/net8.0/zh-Hans/Microsoft.CodeAnalysis.Workspaces.resources.dll
 /Users/minhkhanhnguyen/Downloads/KTTKPM/ChatService/bin/Debug/net8.0/zh-Hant/Microsoft.CodeAnalysis.Workspaces.resources.dll
+/Users/minhkhanhnguyen/Downloads/KTTKPM/ChatService/bin/Debug/net8.0/Microsoft.Extensions.Diagnostics.dll
+/Users/minhkhanhnguyen/Downloads/KTTKPM/ChatService/bin/Debug/net8.0/Microsoft.Extensions.Http.dll
+/Users/minhkhanhnguyen/Downloads/KTTKPM/ChatService/bin/Debug/net8.0/Microsoft.Extensions.Http.Polly.dll
+/Users/minhkhanhnguyen/Downloads/KTTKPM/ChatService/bin/Debug/net8.0/Polly.dll
+/Users/minhkhanhnguyen/Downloads/KTTKPM/ChatService/bin/Debug/net8.0/Polly.Extensions.Http.dll

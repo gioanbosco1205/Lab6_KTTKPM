@@ -6,7 +6,12 @@ using Polly.Retry;
 
 namespace ChatService.Services;
 
-public class RabbitEventPublisher : IDisposable
+public interface IRabbitEventPublisher
+{
+    Task PublishAsync<T>(T message);
+}
+
+public class RabbitEventPublisher : IRabbitEventPublisher, IDisposable
 {
     private readonly IConnectionFactory _connectionFactory;
     private readonly ILogger<RabbitEventPublisher> _logger;
@@ -63,7 +68,7 @@ public class RabbitEventPublisher : IDisposable
         }
     }
 
-    public async Task PublishMessage<T>(T message)
+    public async Task PublishAsync<T>(T message)
     {
         try
         {
@@ -87,6 +92,12 @@ public class RabbitEventPublisher : IDisposable
             _channel = null;
             throw;
         }
+    }
+
+    // Backward compatibility
+    public async Task PublishMessage<T>(T message)
+    {
+        await PublishAsync(message);
     }
 
     public void Dispose()

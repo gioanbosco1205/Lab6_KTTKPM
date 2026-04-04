@@ -11,6 +11,8 @@ public class ChatDbContext : DbContext
 
     public DbSet<ChatMessage> ChatMessages { get; set; }
     public DbSet<Agent> Agents { get; set; }
+    public DbSet<Message> Messages { get; set; }
+    public DbSet<OutboxMessage> OutboxMessages { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -62,6 +64,36 @@ public class ChatDbContext : DbContext
                   .HasForeignKey(m => m.ReceiverId)
                   .HasPrincipalKey(a => a.AgentId)
                   .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Configure Message
+        modelBuilder.Entity<Message>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Type).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.Payload).IsRequired();
+
+            // Index for better query performance on Type
+            entity.HasIndex(e => e.Type);
+        });
+
+        // Configure OutboxMessage
+        modelBuilder.Entity<OutboxMessage>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("outbox_messages");
+            
+            entity.Property(e => e.Type).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.JsonPayload).IsRequired().HasColumnName("json_payload");
+            entity.Property(e => e.CreatedAt).IsRequired().HasColumnName("created_at");
+            entity.Property(e => e.IsProcessed).IsRequired().HasColumnName("is_processed").HasDefaultValue(false);
+            entity.Property(e => e.ProcessedAt).HasColumnName("processed_at");
+
+            // Indexes for better query performance
+            entity.HasIndex(e => e.Type);
+            entity.HasIndex(e => e.IsProcessed);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => new { e.IsProcessed, e.CreatedAt });
         });
     }
 }
