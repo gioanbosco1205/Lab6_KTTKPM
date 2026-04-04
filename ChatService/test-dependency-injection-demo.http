@@ -1,0 +1,65 @@
+### Demo 1: Sử dụng IEventPublisher trực tiếp
+### services.AddScoped<IEventPublisher, OutboxEventPublisher>();
+POST http://localhost:5003/api/policydemo/create-policy-simple
+Content-Type: application/json
+
+{
+  "policyNumber": "POL-SIMPLE-001",
+  "premium": 1000000,
+  "productId": "PROD-LIFE-001",
+  "customerId": "CUST-001"
+}
+
+### Demo 2: Sử dụng ITransactionalEventService (Khuyến nghị)
+### Đảm bảo tính nhất quán giữa dữ liệu và events
+POST http://localhost:5003/api/policydemo/create-policy-transactional
+Content-Type: application/json
+
+{
+  "policyNumber": "POL-TRANS-001",
+  "premium": 1500000,
+  "productId": "PROD-HEALTH-001",
+  "customerId": "CUST-002"
+}
+
+### Demo 3: Publish multiple events
+POST http://localhost:5003/api/policydemo/create-policy-with-activation
+Content-Type: application/json
+
+{
+  "policyNumber": "POL-MULTI-001",
+  "premium": 2000000,
+  "productId": "PROD-AUTO-001",
+  "customerId": "CUST-003"
+}
+
+### Check Outbox Status
+GET http://localhost:5003/api/policydemo/outbox-status
+
+### Test Multiple Policies
+POST http://localhost:5003/api/policydemo/create-policy-simple
+Content-Type: application/json
+
+{
+  "policyNumber": "POL-SIMPLE-002",
+  "premium": 750000,
+  "productId": "PROD-TRAVEL-001",
+  "customerId": "CUST-004"
+}
+
+### Check Outbox Status Again
+GET http://localhost:5003/api/policydemo/outbox-status
+
+### Test Transactional with Different Data
+POST http://localhost:5003/api/policydemo/create-policy-transactional
+Content-Type: application/json
+
+{
+  "policyNumber": "POL-TRANS-002",
+  "premium": 3000000,
+  "productId": "PROD-INVESTMENT-001",
+  "customerId": "CUST-005"
+}
+
+### Final Outbox Check
+GET http://localhost:5003/api/policydemo/outbox-status
