@@ -46,6 +46,7 @@ namespace ChatService.Services
         /// <summary>
         /// PushMessages - Method được gọi mỗi 1 giây
         /// Xử lý outbox messages và gửi qua RabbitMQ
+        /// ⭐ Với retry mechanism (max retry = 5)
         /// </summary>
         private async void PushMessages(object? state)
         {
@@ -53,11 +54,10 @@ namespace ChatService.Services
             {
                 using var scope = _serviceProvider.CreateScope();
                 
-                // Sử dụng IOutbox interface như trong pattern PHẦN 6
-                // Class Outbox chịu trách nhiệm: read message, publish message, delete message
+                // Sử dụng IOutbox interface
                 var outbox = scope.ServiceProvider.GetRequiredService<IOutbox>();
 
-                // 1. Read messages (Đọc tin nhắn)
+                // 1. Read messages (Đọc tin nhắn - chỉ lấy messages có retry count < 5)
                 var messages = await outbox.ReadMessagesAsync(5);
 
                 if (messages.Count > 0)
@@ -75,12 +75,32 @@ namespace ChatService.Services
                         // 3. Delete message (Xóa tin nhắn sau khi gửi thành công)
                         await outbox.DeleteMessageAsync(message.Id);
                         
-                        _logger.LogDebug($"Successfully processed outbox message {message.Id}");
+                        _logger.LogInformation($"[Outbox] Successfully processed message {message.Id}");
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, $"Failed to process outbox message {message.Id}");
-                        // Không delete để retry lần sau
+                        _logger.LogError(ex, $"[Outbox] Failed to process message {message.Id}");
+                        
+                        // ⭐ Increment retry count
+                        try
+                        {
+                            await outbox.IncrementRetryCountAsync(message.Id);
+                            
+                            // ⭐ Check if exceeded max retries
+                            // Note: Cần get message từ DB để check retry count mới nhất
+                            var context = scope.ServiceProvider.GetRequiredService<ChatService.Data.ChatDbContext>();
+                            var dbMessage = await context.Messages.FindAsync(message.Id);
+                            
+                            if (dbMessage != null && dbMessage.HasExceededMaxRetries(5))
+                            {
+                                _logger.LogError($"[Outbox] Message {message.Id} exceeded max retries (5). Moving to dead letter queue.");
+                                await outbox.MoveToDeadLetterQueueAsync(message.Id);
+                            }
+                        }
+                        catch (Exception retryEx)
+                        {
+                            _logger.LogError(retryEx, $"[Outbox] Failed to increment retry count for message {message.Id}");
+                        }
                     }
                 }
             }

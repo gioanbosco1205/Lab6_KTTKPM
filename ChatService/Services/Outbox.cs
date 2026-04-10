@@ -31,14 +31,12 @@ namespace ChatService.Services
 
         public async Task<List<OutboxMessage>> ReadMessagesAsync(int batchSize = 10)
         {
-            // Tạo scope mới để lấy DbContext (vì Outbox là Singleton, DbContext là Scoped)
+           
             using var scope = _serviceProvider.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<ChatDbContext>();
-            
-            // FETCH MESSAGES từ Message table (Event Store)
-            // ⭐ Chỉ lấy messages chưa được processed (ProcessedAt == null)
+
             var messages = await context.Messages
-                .Where(m => m.ProcessedAt == null)
+                .Where(m => m.ProcessedAt == null && m.RetryCount < 5)  // ⭐ Max retry = 5
                 .OrderBy(m => m.Id)
                 .Take(batchSize)
                 .ToListAsync();
@@ -54,7 +52,7 @@ namespace ChatService.Services
                 }
             }
             
-            _logger.LogDebug($"[Outbox] Read {result.Count} unprocessed messages from Messages table");
+            _logger.LogDebug($"[Outbox] Read {result.Count} unprocessed messages (retry count < 5) from Messages table");
             return result;
         }
 
@@ -87,6 +85,38 @@ namespace ChatService.Services
                 .ExecuteDeleteAsync();
             
             _logger.LogInformation($"[Outbox] Deleted message {messageId} from Messages table");
+        }
+
+        public async Task IncrementRetryCountAsync(long messageId)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<ChatDbContext>();
+            
+            var message = await context.Messages.FindAsync(messageId);
+            if (message != null)
+            {
+                message.IncrementRetryCount();
+                await context.SaveChangesAsync();
+                
+                _logger.LogWarning($"[Outbox] Incremented retry count for message {messageId}. RetryCount: {message.RetryCount}, LastRetryAt: {message.LastRetryAt}");
+            }
+        }
+
+      
+        public async Task MoveToDeadLetterQueueAsync(long messageId)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<ChatDbContext>();
+            
+            var message = await context.Messages.FindAsync(messageId);
+            if (message != null)
+            {
+                // Mark as processed để không retry nữa
+                message.MarkAsProcessed();
+                await context.SaveChangesAsync();
+                
+                _logger.LogError($"[Outbox] Message {messageId} moved to dead letter queue after {message.RetryCount} retries. Type: {message.Type}");
+            }
         }
 
         // ========== Legacy methods for OutboxMessage table (backward compatibility) ==========

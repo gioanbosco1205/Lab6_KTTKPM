@@ -11,7 +11,11 @@ namespace ChatService.Services
         Task PublishMessageAsync(OutboxMessage message);
         Task DeleteMessageAsync(long messageId);
         
-        // Cần thiết cho các service có sẵn hiện tại
+        // ⭐ Retry mechanism methods
+        Task IncrementRetryCountAsync(long messageId);
+        Task MoveToDeadLetterQueueAsync(long messageId);
+        
+        // Legacy methods
         Task<List<OutboxMessage>> GetUnprocessedMessagesAsync(int batchSize = 10);
         Task MarkAsProcessedAsync(long messageId);
         Task MarkAsProcessedAsync(List<long> messageIds);
