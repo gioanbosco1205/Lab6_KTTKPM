@@ -58,33 +58,45 @@ namespace ChatService.Services
 
         public async Task PublishMessageAsync(OutboxMessage message)
         {
+            _logger.LogDebug($"[Outbox] Attempting to publish message {message.Id}");
+            
             var eventData = message.RecreateEvent();
             if (eventData != null)
             {
                 // PUBLISH to RabbitMQ exchange
                 await _rabbitPublisher.PublishAsync(eventData);
-                _logger.LogInformation($"[Outbox] Published message {message.Id} of type {message.Type}");
+                
+                _logger.LogInformation($"[Outbox] ✅ Published message {message.Id} of type {message.Type} to RabbitMQ");
             }
             else
             {
-                _logger.LogWarning($"[Outbox] Could not recreate event from message {message.Id}");
+                _logger.LogError($"[Outbox] ❌ Could not recreate event from message {message.Id}. Type: {message.Type}");
+                throw new InvalidOperationException($"Failed to recreate event from message {message.Id}");
             }
         }
 
-      
         public async Task DeleteMessageAsync(long messageId)
         {
             // Tạo scope mới để lấy DbContext
             using var scope = _serviceProvider.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<ChatDbContext>();
             
+            _logger.LogDebug($"[Outbox] Deleting message {messageId} from database");
+            
             // DELETE từ Message table (Event Store)
             // Sử dụng ExecuteDeleteAsync - tương đương với ExecuteUpdate() trong NHibernate
-            await context.Messages
+            var deletedCount = await context.Messages
                 .Where(m => m.Id == messageId)
                 .ExecuteDeleteAsync();
             
-            _logger.LogInformation($"[Outbox] Deleted message {messageId} from Messages table");
+            if (deletedCount > 0)
+            {
+                _logger.LogInformation($"[Outbox] 🗑️  Deleted message {messageId} from Messages table");
+            }
+            else
+            {
+                _logger.LogWarning($"[Outbox] ⚠️  Message {messageId} not found for deletion");
+            }
         }
 
         public async Task IncrementRetryCountAsync(long messageId)
@@ -95,10 +107,15 @@ namespace ChatService.Services
             var message = await context.Messages.FindAsync(messageId);
             if (message != null)
             {
+                var oldRetryCount = message.RetryCount;
                 message.IncrementRetryCount();
                 await context.SaveChangesAsync();
                 
-                _logger.LogWarning($"[Outbox] Incremented retry count for message {messageId}. RetryCount: {message.RetryCount}, LastRetryAt: {message.LastRetryAt}");
+                _logger.LogWarning($"[Outbox] 🔄 Retry count incremented for message {messageId}: {oldRetryCount} → {message.RetryCount}. LastRetryAt: {message.LastRetryAt:yyyy-MM-dd HH:mm:ss}");
+            }
+            else
+            {
+                _logger.LogError($"[Outbox] ❌ Message {messageId} not found for retry count increment");
             }
         }
 
@@ -115,7 +132,11 @@ namespace ChatService.Services
                 message.MarkAsProcessed();
                 await context.SaveChangesAsync();
                 
-                _logger.LogError($"[Outbox] Message {messageId} moved to dead letter queue after {message.RetryCount} retries. Type: {message.Type}");
+                _logger.LogCritical($"[Outbox] ⚠️  DEAD LETTER: Message {messageId} moved to dead letter queue after {message.RetryCount} retries. Type: {message.Type}, CreatedAt: {message.CreatedAt:yyyy-MM-dd HH:mm:ss}");
+            }
+            else
+            {
+                _logger.LogError($"[Outbox] ❌ Message {messageId} not found for dead letter queue");
             }
         }
 
