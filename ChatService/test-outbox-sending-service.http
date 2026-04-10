@@ -1,0 +1,86 @@
+### Test OutboxSendingService - IHostedService chạy mỗi 1 giây
+
+### 1. Tạo một số events để test OutboxSendingService
+POST http://localhost:5003/api/policydemo/create-policy-simple
+Content-Type: application/json
+
+{
+  "policyNumber": "POL-BG-001",
+  "premium": 1000000,
+  "productId": "PROD-LIFE-001",
+  "customerId": "CUST-001"
+}
+
+### 2. Tạo thêm events
+POST http://localhost:5003/api/policydemo/create-policy-simple
+Content-Type: application/json
+
+{
+  "policyNumber": "POL-BG-002",
+  "premium": 1500000,
+  "productId": "PROD-HEALTH-001",
+  "customerId": "CUST-002"
+}
+
+### 3. Tạo multiple events
+POST http://localhost:5003/api/policydemo/create-policy-with-activation
+Content-Type: application/json
+
+{
+  "policyNumber": "POL-BG-003",
+  "premium": 2000000,
+  "productId": "PROD-AUTO-001",
+  "customerId": "CUST-003"
+}
+
+### 4. Kiểm tra outbox status - OutboxSendingService sẽ xử lý mỗi 1 giây
+GET http://localhost:5003/api/outboxmonitor/status
+
+### 5. Đợi vài giây rồi kiểm tra lại - messages sẽ được xử lý
+### OutboxSendingService chạy mỗi 1 giây nên messages sẽ được process nhanh
+GET http://localhost:5003/api/outboxmonitor/status
+
+### 6. Xem thống kê chi tiết
+GET http://localhost:5003/api/outboxmonitor/stats
+
+### 7. Tạo thêm events để test continuous processing
+POST http://localhost:5003/api/policydemo/create-policy-transactional
+Content-Type: application/json
+
+{
+  "policyNumber": "POL-BG-004",
+  "premium": 3000000,
+  "productId": "PROD-INVESTMENT-001",
+  "customerId": "CUST-004"
+}
+
+### 8. Kiểm tra lại sau khi tạo event mới
+GET http://localhost:5003/api/outboxmonitor/status
+
+### 9. Test batch processing - tạo nhiều events cùng lúc
+POST http://localhost:5003/api/policydemo/create-policy-simple
+Content-Type: application/json
+
+{
+  "policyNumber": "POL-BG-005",
+  "premium": 750000,
+  "productId": "PROD-TRAVEL-001",
+  "customerId": "CUST-005"
+}
+
+### 10. Tạo thêm
+POST http://localhost:5003/api/policydemo/create-policy-simple
+Content-Type: application/json
+
+{
+  "policyNumber": "POL-BG-006",
+  "premium": 850000,
+  "productId": "PROD-ACCIDENT-001",
+  "customerId": "CUST-006"
+}
+
+### 11. Kiểm tra final status
+GET http://localhost:5003/api/outboxmonitor/status
+
+### 12. Xem stats cuối cùng
+GET http://localhost:5003/api/outboxmonitor/stats
