@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using ChatService.Services;
 using ChatService.Events;
+using ChatService.Data;
 
 namespace ChatService.Controllers
 {
@@ -82,6 +84,56 @@ namespace ChatService.Controllers
             {
                 _logger.LogError(ex, "Failed to get outbox status");
                 return StatusCode(500, new { Error = "Failed to get outbox status" });
+            }
+        }
+
+        /// <summary>
+        /// ⭐ Kiểm tra Messages table với CreatedAt và ProcessedAt
+        /// </summary>
+        [HttpGet("messages/status")]
+        public async Task<IActionResult> GetMessagesStatus([FromServices] ChatDbContext context)
+        {
+            try
+            {
+                var totalCount = await context.Messages.CountAsync();
+                var unprocessedCount = await context.Messages.CountAsync(m => m.ProcessedAt == null);
+                var processedCount = await context.Messages.CountAsync(m => m.ProcessedAt != null);
+
+                var oldestUnprocessed = await context.Messages
+                    .Where(m => m.ProcessedAt == null)
+                    .OrderBy(m => m.CreatedAt)
+                    .Select(m => new { m.Id, m.Type, m.CreatedAt })
+                    .FirstOrDefaultAsync();
+
+                var recentMessages = await context.Messages
+                    .OrderByDescending(m => m.CreatedAt)
+                    .Take(10)
+                    .Select(m => new
+                    {
+                        m.Id,
+                        m.Type,
+                        m.CreatedAt,
+                        m.ProcessedAt,
+                        IsProcessed = m.ProcessedAt != null,
+                        ProcessingTimeSeconds = m.ProcessedAt != null 
+                            ? (m.ProcessedAt.Value - m.CreatedAt).TotalSeconds 
+                            : (double?)null
+                    })
+                    .ToListAsync();
+
+                return Ok(new
+                {
+                    TotalMessages = totalCount,
+                    UnprocessedCount = unprocessedCount,
+                    ProcessedCount = processedCount,
+                    OldestUnprocessed = oldestUnprocessed,
+                    RecentMessages = recentMessages
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get messages status");
+                return StatusCode(500, new { Error = "Failed to get messages status" });
             }
         }
     }

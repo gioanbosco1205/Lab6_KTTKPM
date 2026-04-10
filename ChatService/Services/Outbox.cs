@@ -29,10 +29,6 @@ namespace ChatService.Services
             _logger = logger;
         }
 
-        /// <summary>
-        /// 1. READ MESSAGE - Fetch messages từ Message table
-        /// ⭐ Đúng theo yêu cầu: session.Query<Message>().OrderBy(m => m.Id).Take(50).ToList()
-        /// </summary>
         public async Task<List<OutboxMessage>> ReadMessagesAsync(int batchSize = 10)
         {
             // Tạo scope mới để lấy DbContext (vì Outbox là Singleton, DbContext là Scoped)
@@ -40,7 +36,9 @@ namespace ChatService.Services
             var context = scope.ServiceProvider.GetRequiredService<ChatDbContext>();
             
             // FETCH MESSAGES từ Message table (Event Store)
+            // ⭐ Chỉ lấy messages chưa được processed (ProcessedAt == null)
             var messages = await context.Messages
+                .Where(m => m.ProcessedAt == null)
                 .OrderBy(m => m.Id)
                 .Take(batchSize)
                 .ToListAsync();
@@ -56,14 +54,10 @@ namespace ChatService.Services
                 }
             }
             
-            _logger.LogDebug($"[Outbox] Read {result.Count} messages from Messages table");
+            _logger.LogDebug($"[Outbox] Read {result.Count} unprocessed messages from Messages table");
             return result;
         }
 
-        /// <summary>
-        /// 2. PUBLISH MESSAGE - Gửi message lên RabbitMQ
-        /// ⭐ Đúng theo yêu cầu: await busClient.BasicPublishAsync(message, cfg => {...})
-        /// </summary>
         public async Task PublishMessageAsync(OutboxMessage message)
         {
             var eventData = message.RecreateEvent();
@@ -79,10 +73,7 @@ namespace ChatService.Services
             }
         }
 
-        /// <summary>
-        /// 3. DELETE MESSAGE - Xóa message sau khi publish thành công
-        /// ⭐ Đúng theo yêu cầu: session.CreateQuery("delete Message where id=:id").SetParameter("id", msg.Id).ExecuteUpdate()
-        /// </summary>
+      
         public async Task DeleteMessageAsync(long messageId)
         {
             // Tạo scope mới để lấy DbContext

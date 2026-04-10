@@ -66,15 +66,21 @@ public class ChatDbContext : DbContext
                   .OnDelete(DeleteBehavior.Restrict);
         });
 
-        // Configure Message
+        // Configure Message (Event Store for Outbox Pattern)
         modelBuilder.Entity<Message>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Type).IsRequired().HasMaxLength(500);
             entity.Property(e => e.Payload).IsRequired();
+            
+            // ⭐ PHẦN 8 - Thêm configuration cho CreatedAt và ProcessedAt
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.ProcessedAt);
 
-            // Index for better query performance on Type
+            // Indexes for better query performance
             entity.HasIndex(e => e.Type);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.ProcessedAt);
         });
 
         // Configure OutboxMessage

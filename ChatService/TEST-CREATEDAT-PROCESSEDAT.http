@@ -1,0 +1,158 @@
+### TEST CreatedAt và ProcessedAt Fields
+
+### ============================================
+### 1. Publish một event mới
+### ============================================
+POST http://localhost:5003/api/event/publish-policy-created
+Content-Type: application/json
+
+{
+  "policyId": "POL-TEST-001",
+  "policyNumber": "POL-20241227-TEST-001",
+  "customerId": "CUST-TEST-001",
+  "productId": "PROD-TEST-001",
+  "premiumAmount": 1500.00
+}
+
+### Expected Response:
+### {
+###   "message": "Event saved to database successfully",
+###   "eventType": "PolicyCreated",
+###   "policyNumber": "POL-20241227-TEST-001"
+### }
+
+### ============================================
+### 2. Check Messages Status (NEW ENDPOINT)
+### ============================================
+GET http://localhost:5003/api/event/messages/status
+
+### Expected Response:
+### {
+###   "totalMessages": 1,
+###   "unprocessedCount": 1,
+###   "processedCount": 0,
+###   "oldestUnprocessed": {
+###     "id": 1,
+###     "type": "ChatService.Events.PolicyCreated",
+###     "createdAt": "2024-12-27T10:30:00Z"
+###   },
+###   "recentMessages": [
+###     {
+###       "id": 1,
+###       "type": "ChatService.Events.PolicyCreated",
+###       "createdAt": "2024-12-27T10:30:00Z",
+###       "processedAt": null,
+###       "isProcessed": false,
+###       "processingTimeSeconds": null
+###     }
+###   ]
+### }
+
+### ============================================
+### 3. Wait 1-2 seconds, then check again
+### ============================================
+GET http://localhost:5003/api/event/messages/status
+
+### Expected Response (after background job processed):
+### {
+###   "totalMessages": 0,  // Message deleted after processing
+###   "unprocessedCount": 0,
+###   "processedCount": 0,
+###   "oldestUnprocessed": null,
+###   "recentMessages": []
+### }
+
+### ============================================
+### 4. Publish multiple events to test batch processing
+### ============================================
+
+### Event 1
+POST http://localhost:5003/api/event/publish-policy-created
+Content-Type: application/json
+
+{
+  "policyNumber": "POL-BATCH-001",
+  "premiumAmount": 1000.00
+}
+
+###
+
+### Event 2
+POST http://localhost:5003/api/event/publish-policy-created
+Content-Type: application/json
+
+{
+  "policyNumber": "POL-BATCH-002",
+  "premiumAmount": 2000.00
+}
+
+###
+
+### Event 3
+POST http://localhost:5003/api/event/publish-policy-created
+Content-Type: application/json
+
+{
+  "policyNumber": "POL-BATCH-003",
+  "premiumAmount": 3000.00
+}
+
+###
+
+### Check status immediately after batch
+GET http://localhost:5003/api/event/messages/status
+
+### Expected: Should see 3 unprocessed messages with CreatedAt timestamps
+
+### ============================================
+### 5. Check old Outbox Status endpoint (still works)
+### ============================================
+GET http://localhost:5003/api/event/outbox/status
+
+### ============================================
+### VERIFICATION CHECKLIST
+### ============================================
+### 
+### ✅ CreatedAt Field:
+### - [ ] CreatedAt is set automatically when message is created
+### - [ ] CreatedAt is NOT NULL
+### - [ ] CreatedAt uses UTC timezone
+### - [ ] CreatedAt is before or equal to current time
+### 
+### ✅ ProcessedAt Field:
+### - [ ] ProcessedAt is NULL when message is first created
+### - [ ] ProcessedAt remains NULL while message is unprocessed
+### - [ ] ProcessedAt is set after background job processes message (if using soft delete)
+### - [ ] ProcessedAt is after CreatedAt
+### 
+### ✅ Query Performance:
+### - [ ] Can filter by ProcessedAt == null efficiently
+### - [ ] Can order by CreatedAt
+### - [ ] Index on CreatedAt improves query speed
+### - [ ] Index on ProcessedAt improves query speed
+### 
+### ✅ Monitoring:
+### - [ ] Can see total message count
+### - [ ] Can see unprocessed vs processed count
+### - [ ] Can see oldest unprocessed message
+### - [ ] Can calculate processing time (ProcessedAt - CreatedAt)
+
+### ============================================
+### NOTES
+### ============================================
+### 
+### CURRENT BEHAVIOR (Hard Delete):
+### - Message is created with CreatedAt = NOW, ProcessedAt = NULL
+### - Background job reads messages where ProcessedAt == NULL
+### - After successful publish, message is DELETED from database
+### - ProcessedAt is never set (because message is deleted)
+### 
+### ALTERNATIVE BEHAVIOR (Soft Delete):
+### - Message is created with CreatedAt = NOW, ProcessedAt = NULL
+### - Background job reads messages where ProcessedAt == NULL
+### - After successful publish, message.MarkAsProcessed() sets ProcessedAt = NOW
+### - Message stays in database for audit/monitoring
+### - Cleanup job can delete old processed messages later
+### 
+### TO SWITCH TO SOFT DELETE:
+### Modify Outbox.DeleteMessageAsync() to use MarkAsProcessed() instead of ExecuteDeleteAsync()
