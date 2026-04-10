@@ -57,8 +57,8 @@ namespace ChatService.Services
                 using var scope = _serviceProvider.CreateScope();
                 var outbox = scope.ServiceProvider.GetRequiredService<IOutbox>();
 
-                // 1. Read messages
-                var messages = await outbox.ReadMessagesAsync(5);
+                // 1. Read messages (batch size = 100)
+                var messages = await outbox.ReadMessagesAsync(100);
 
                 if (messages.Count > 0)
                 {

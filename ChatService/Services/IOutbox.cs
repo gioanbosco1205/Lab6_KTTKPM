@@ -4,10 +4,11 @@ namespace ChatService.Services
 {
     /// <summary>
     /// IOutbox interface - Abstraction cho outbox operations
+    /// Batch size default = 100 messages
     /// </summary>
     public interface IOutbox
     {
-        Task<List<OutboxMessage>> ReadMessagesAsync(int batchSize = 10);
+        Task<List<OutboxMessage>> ReadMessagesAsync(int batchSize = 100);
         Task PublishMessageAsync(OutboxMessage message);
         Task DeleteMessageAsync(long messageId);
         
@@ -16,7 +17,7 @@ namespace ChatService.Services
         Task MoveToDeadLetterQueueAsync(long messageId);
         
         // Legacy methods
-        Task<List<OutboxMessage>> GetUnprocessedMessagesAsync(int batchSize = 10);
+        Task<List<OutboxMessage>> GetUnprocessedMessagesAsync(int batchSize = 100);
         Task MarkAsProcessedAsync(long messageId);
         Task MarkAsProcessedAsync(List<long> messageIds);
         Task<int> GetUnprocessedCountAsync();

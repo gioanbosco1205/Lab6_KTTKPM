@@ -29,7 +29,12 @@ namespace ChatService.Services
             _logger = logger;
         }
 
-        public async Task<List<OutboxMessage>> ReadMessagesAsync(int batchSize = 10)
+        /// <summary>
+        /// 1. READ MESSAGE - Fetch messages từ Message table
+        /// ⭐ Đúng theo yêu cầu: session.Query<Message>().OrderBy(m => m.Id).Take(50).ToList()
+        /// Batch size = 100 messages (configurable)
+        /// </summary>
+        public async Task<List<OutboxMessage>> ReadMessagesAsync(int batchSize = 100)
         {
            
             using var scope = _serviceProvider.CreateScope();
@@ -142,7 +147,7 @@ namespace ChatService.Services
 
         // ========== Legacy methods for OutboxMessage table (backward compatibility) ==========
         
-        public async Task<List<OutboxMessage>> GetUnprocessedMessagesAsync(int batchSize = 10)
+        public async Task<List<OutboxMessage>> GetUnprocessedMessagesAsync(int batchSize = 100)
         {
             using var scope = _serviceProvider.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<ChatDbContext>();
