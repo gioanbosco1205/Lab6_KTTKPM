@@ -53,12 +53,12 @@ namespace ChatService.Services
             {
                 using var scope = _serviceProvider.CreateScope();
                 
-                // Sử dụng IOutbox interface như trong pattern
+                // Sử dụng IOutbox interface như trong pattern PHẦN 6
+                // Class Outbox chịu trách nhiệm: read message, publish message, delete message
                 var outbox = scope.ServiceProvider.GetRequiredService<IOutbox>();
-                var rabbitPublisher = scope.ServiceProvider.GetRequiredService<IRabbitEventPublisher>();
 
-                // Lấy messages chưa xử lý từ outbox
-                var messages = await outbox.GetUnprocessedMessagesAsync(5);
+                // 1. Read messages (Đọc tin nhắn)
+                var messages = await outbox.ReadMessagesAsync(5);
 
                 if (messages.Count > 0)
                 {
@@ -69,28 +69,18 @@ namespace ChatService.Services
                 {
                     try
                     {
-                        // Recreate event từ JSON payload
-                        var eventData = message.RecreateEvent();
-                        if (eventData != null)
-                        {
-                            // Publish qua RabbitMQ
-                            await rabbitPublisher.PublishAsync(eventData);
-                            
-                            // Mark as processed
-                            await outbox.MarkAsProcessedAsync(message.Id);
-                            
-                            _logger.LogDebug($"Successfully pushed message {message.Id} of type {message.Type}");
-                        }
-                        else
-                        {
-                            _logger.LogWarning($"Could not recreate event from message {message.Id}");
-                            await outbox.MarkAsProcessedAsync(message.Id); // Skip invalid messages
-                        }
+                        // 2. Publish message (Gửi tin nhắn)
+                        await outbox.PublishMessageAsync(message);
+                        
+                        // 3. Delete message (Xóa tin nhắn sau khi gửi thành công)
+                        await outbox.DeleteMessageAsync(message.Id);
+                        
+                        _logger.LogDebug($"Successfully processed outbox message {message.Id}");
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, $"Failed to push message {message.Id}");
-                        // Không mark as processed để retry lần sau
+                        _logger.LogError(ex, $"Failed to process outbox message {message.Id}");
+                        // Không delete để retry lần sau
                     }
                 }
             }

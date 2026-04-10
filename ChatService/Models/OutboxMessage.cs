@@ -22,6 +22,16 @@ namespace ChatService.Models
             IsProcessed = false;
         }
 
+        // Internal constructor for Outbox processor to create from Message table
+        internal OutboxMessage(long id, string type, string jsonPayload)
+        {
+            Id = id;
+            Type = type;
+            JsonPayload = jsonPayload;
+            CreatedAt = DateTime.UtcNow;
+            IsProcessed = false;
+        }
+
         public virtual object? RecreateEvent()
         {
             var type = System.Type.GetType(Type);

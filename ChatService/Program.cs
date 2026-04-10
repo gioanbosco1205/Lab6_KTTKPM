@@ -85,13 +85,14 @@ builder.Services.AddSingleton<IRabbitEventPublisher, RabbitEventPublisher>();
 
 // ⭐ PHẦN MỚI - Đăng ký Outbox Services
 builder.Services.AddScoped<ChatService.Services.ISession, DatabaseSession>();
-builder.Services.AddScoped<IEventPublisher, OutboxEventPublisher>();
-builder.Services.AddScoped<IOutbox, Outbox>();                       // Outbox interface
-builder.Services.AddScoped<IOutboxService, OutboxService>();
 builder.Services.AddScoped<ITransactionalEventService, TransactionalEventService>();
+builder.Services.AddScoped<IOutboxService, OutboxService>();
 
-// ⭐ PHẦN 5 - BACKGROUND SERVICE
-builder.Services.AddHostedService<OutboxSendingService>();           // Chạy mỗi 1 giây
+
+builder.Services.AddScoped<IEventPublisher, OutboxEventPublisher>();  
+builder.Services.AddSingleton<Outbox>();                              
+builder.Services.AddSingleton<IOutbox>(sp => sp.GetRequiredService<Outbox>()); // Alias cho IOutbox interface
+builder.Services.AddHostedService<OutboxSendingService>();
 // builder.Services.AddHostedService<OutboxProcessorService>();      // Alternative: chạy mỗi 30 giây
 
 // ⭐ PHẦN 13 - Đăng ký Event Subscriber Services
