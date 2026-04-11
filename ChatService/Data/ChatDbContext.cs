@@ -73,17 +73,21 @@ public class ChatDbContext : DbContext
             entity.Property(e => e.Type).IsRequired().HasMaxLength(500);
             entity.Property(e => e.Payload).IsRequired();
             
-            // ⭐ PHẦN 8 - Thêm configuration cho CreatedAt và ProcessedAt
+            // Tracking fields
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.ProcessedAt);
+
+            // ⭐ Retry mechanism fields
+            entity.Property(e => e.RetryCount).IsRequired().HasDefaultValue(0);
+            entity.Property(e => e.LastRetryAt);
 
             // Indexes for better query performance
             entity.HasIndex(e => e.Type);
             entity.HasIndex(e => e.CreatedAt);
             entity.HasIndex(e => e.ProcessedAt);
+            entity.HasIndex(e => e.RetryCount);
+            entity.HasIndex(e => new { e.ProcessedAt, e.RetryCount }); // Composite index for retry queries
         });
-
-        // Configure OutboxMessage
         modelBuilder.Entity<OutboxMessage>(entity =>
         {
             entity.HasKey(e => e.Id);

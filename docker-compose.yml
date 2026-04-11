@@ -1,6 +1,21 @@
 version: '3.8'
 
 services:
+  # Eureka Server - Service Discovery
+  eureka:
+    image: kttkpm-eureka:latest
+    container_name: eureka
+    ports:
+      - "8761:8761"
+    networks:
+      - microservices-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
   # RabbitMQ - Message Queue
   rabbitmq:
     image: rabbitmq:3-management
@@ -66,10 +81,13 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
+      - Eureka__Client__ServiceUrl=http://eureka:8761/eureka/
     networks:
       - microservices-network
     depends_on:
       postgres:
+        condition: service_healthy
+      eureka:
         condition: service_healthy
 
   # Policy Service
@@ -85,12 +103,15 @@ services:
       - ASPNETCORE_URLS=http://+:80
       - RabbitMQ__Host=rabbitmq
       - ConnectionStrings__PgConnection=Host=postgres;Port=5432;Database=lab_netmicro_payments;Username=postgres;Password=1234567890aA@
+      - Eureka__Client__ServiceUrl=http://eureka:8761/eureka/
     networks:
       - microservices-network
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      eureka:
         condition: service_healthy
 
   # Chat Service
@@ -105,13 +126,19 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
       - RabbitMQ__Host=rabbitmq
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=ChatServiceDb;Username=postgres;Password=1234567890aA@
       - JWT__Key=your-super-secret-jwt-key-that-is-at-least-32-characters-long
       - JWT__Issuer=ChatService
       - JWT__Audience=ChatService
+      - Eureka__Client__ServiceUrl=http://eureka:8761/eureka/
     networks:
       - microservices-network
     depends_on:
+      postgres:
+        condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      eureka:
         condition: service_healthy
 
   # Payment Service
@@ -126,10 +153,13 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
       - ConnectionStrings__PgConnection=Host=postgres;Port=5432;Database=lab_netmicro_payments;Username=postgres;Password=1234567890aA@
+      - Eureka__Client__ServiceUrl=http://eureka:8761/eureka/
     networks:
       - microservices-network
     depends_on:
       postgres:
+        condition: service_healthy
+      eureka:
         condition: service_healthy
 
   # Pricing Service
@@ -143,8 +173,12 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
+      - Eureka__Client__ServiceUrl=http://eureka:8761/eureka/
     networks:
       - microservices-network
+    depends_on:
+      eureka:
+        condition: service_healthy
 
   # API Gateway
   apigateway:
@@ -158,10 +192,13 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
       - Redis__ConnectionString=redis:6379
+      - Eureka__Client__ServiceUrl=http://eureka:8761/eureka/
     networks:
       - microservices-network
     depends_on:
       redis:
+        condition: service_healthy
+      eureka:
         condition: service_healthy
       authservice:
         condition: service_started

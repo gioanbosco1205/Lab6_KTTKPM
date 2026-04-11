@@ -1,13 +1,6 @@
-# Stage 1: Build bằng Maven
-FROM maven:3.9.6-eclipse-temurin-17 AS build
+# Sử dụng jar đã build sẵn
+FROM eclipse-temurin:17-jre
 WORKDIR /app
-COPY eureka-server/pom.xml .
-COPY eureka-server/src ./src
-RUN mvn clean package -DskipTests
-
-# Stage 2: Chạy app
-FROM eclipse-temurin:17-jdk
-WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
+COPY eureka-server/target/*.jar app.jar
 EXPOSE 8761
 ENTRYPOINT ["java","-jar","app.jar"]

@@ -1,0 +1,286 @@
+╔═══════════════════════════════════════════════════════════════════════════════════════╗
+║                         OUTBOX PATTERN - FLOW DIAGRAM                                 ║
+╚═══════════════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│ STEP 1: PolicyService tạo Policy và publish event                                  │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+    PolicyService
+         │
+         │ 1. Create Policy
+         │    - Save to database
+         │    - Generate PolicyCreated event
+         │
+         ▼
+    RabbitMQ Exchange
+         │
+         │ 2. Route to Queue
+         │
+         ▼
+    policy.created.chatservice Queue
+
+
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│ STEP 2: ChatService nhận event và lưu vào Messages table (Event Store)             │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+    RabbitMQ Queue
+         │
+         │ 3. Consume Event
+         │
+         ▼
+    EventSubscriberHostedService
+         │
+         │ 4. Handle PolicyCreated
+         │
+         ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │ Messages Table (Event Store)                                │
+    ├─────────────────────────────────────────────────────────────┤
+    │ Id: 1                                                       │
+    │ Type: "PolicyService.Events.PolicyCreated"                  │
+    │ Payload: {"policyNumber":"POL-001", ...}                   │
+    │ CreatedAt: 2026-04-11 10:00:00                             │
+    │ ProcessedAt: NULL                    ← Chưa xử lý          │
+    │ RetryCount: 0                                              │
+    └─────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│ STEP 3: OutboxSendingService (Background Job) xử lý messages                       │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+    OutboxSendingService (runs every 1 second)
+         │
+         │ 5. Read unprocessed messages
+         │    WHERE ProcessedAt IS NULL
+         │    AND RetryCount < 5
+         │    ORDER BY Id
+         │    LIMIT 100
+         │
+         ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │ Found 1 message                                             │
+    │ Id: 1                                                       │
+    │ Type: "PolicyService.Events.PolicyCreated"                  │
+    └─────────────────────────────────────────────────────────────┘
+         │
+         │ 6. Publish to RabbitMQ
+         │
+         ▼
+    RabbitMQ Exchange (policy.events)
+         │
+         │ 7. Route to internal queues
+         │
+         ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │ • policy.notifications.queue                                │
+    │ • policy.analytics.queue                                    │
+    │ • policy.audit.queue                                        │
+    └─────────────────────────────────────────────────────────────┘
+         │
+         │ 8. Delete message from Messages table
+         │
+         ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │ Messages Table (Event Store)                                │
+    ├─────────────────────────────────────────────────────────────┤
+    │ (empty - message deleted)                  ← Đã xử lý xong │
+    └─────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│ STEP 4: SignalR Hub gửi real-time notifications                                    │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+    RabbitMQ Queue
+         │
+         │ 9. Consume from internal queue
+         │
+         ▼
+    SignalR Hub (AgentChatHub)
+         │
+         │ 10. Send to connected clients
+         │
+         ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │ Browser (client-app/index.html)                             │
+    │                                                             │
+    │ 🔔 Toast Notification:                                      │
+    │    "Policy Created: POL-001"                                │
+    └─────────────────────────────────────────────────────────────┘
+
+
+╔═══════════════════════════════════════════════════════════════════════════════════════╗
+║                         RETRY MECHANISM (Nếu publish thất bại)                        ║
+╚═══════════════════════════════════════════════════════════════════════════════════════╝
+
+    OutboxSendingService
+         │
+         │ Publish failed (RabbitMQ down)
+         │
+         ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │ Messages Table                                              │
+    ├─────────────────────────────────────────────────────────────┤
+    │ Id: 1                                                       │
+    │ RetryCount: 1                        ← Increment           │
+    │ LastRetryAt: 2026-04-11 10:00:01                           │
+    │ ProcessedAt: NULL                    ← Vẫn chưa xử lý      │
+    └─────────────────────────────────────────────────────────────┘
+         │
+         │ Wait 1 second
+         │
+         ▼
+    OutboxSendingService (retry)
+         │
+         │ Retry publish
+         │
+         ├─── SUCCESS ──────────────────────────────────────────┐
+         │                                                       │
+         │ Delete message                                        │
+         │                                                       │
+         └─── FAILED (RetryCount < 5) ─────────────────────────┤
+         │                                                       │
+         │ Increment RetryCount                                  │
+         │ Wait 1 second and retry again                         │
+         │                                                       │
+         └─── FAILED (RetryCount >= 5) ────────────────────────┤
+                                                                 │
+                                                                 ▼
+                                            ┌─────────────────────────────────────┐
+                                            │ DEAD LETTER QUEUE                   │
+                                            │ - Mark ProcessedAt = NOW            │
+                                            │ - Log critical error                │
+                                            │ - Manual intervention required      │
+                                            └─────────────────────────────────────┘
+
+
+╔═══════════════════════════════════════════════════════════════════════════════════════╗
+║                         TIMELINE (Thời gian thực tế)                                  ║
+╚═══════════════════════════════════════════════════════════════════════════════════════╝
+
+T = 0s      PolicyService tạo policy
+            └─> RabbitMQ nhận event
+
+T = 0.1s    ChatService consume event
+            └─> Lưu vào Messages table (ProcessedAt = NULL)
+
+T = 1s      OutboxSendingService chạy lần 1
+            └─> Read message từ Messages table
+            └─> Publish to RabbitMQ
+            └─> Delete message (ProcessedAt = NULL → deleted)
+
+T = 1.1s    SignalR Hub gửi notification
+            └─> Browser nhận toast notification
+
+T = 2s      OutboxSendingService chạy lần 2
+            └─> Không có message nào (Messages table empty)
+
+T = 3s      OutboxSendingService chạy lần 3
+            └─> Không có message nào (Messages table empty)
+
+...         (Cứ mỗi 1 giây chạy 1 lần)
+
+
+╔═══════════════════════════════════════════════════════════════════════════════════════╗
+║                         KEY POINTS (Điểm quan trọng)                                  ║
+╚═══════════════════════════════════════════════════════════════════════════════════════╝
+
+✅ 1. ATOMICITY (Tính nguyên tử)
+   - Lưu event vào Messages table trong cùng transaction với business logic
+   - Nếu transaction fail → Không có event nào được tạo
+   - Đảm bảo consistency giữa database và events
+
+✅ 2. RELIABILITY (Độ tin cậy)
+   - Messages được lưu trong database (persistent)
+   - Không mất message khi RabbitMQ down
+   - Retry mechanism với max 5 lần
+
+✅ 3. ORDERING (Thứ tự)
+   - Messages được xử lý theo thứ tự Id (ORDER BY Id)
+   - Đảm bảo events được publish đúng thứ tự
+
+✅ 4. IDEMPOTENCY (Tính bất biến)
+   - Mỗi message chỉ được publish 1 lần
+   - Sau khi publish thành công → Delete ngay
+   - Không có duplicate messages
+
+✅ 5. MONITORING (Giám sát)
+   - Comprehensive logging (SUCCESS, FAILURE, RETRY, DEAD LETTER)
+   - Có thể track message flow qua logs
+   - Dead letter queue cho messages thất bại
+
+✅ 6. PERFORMANCE (Hiệu năng)
+   - Batch processing (100 messages/lần)
+   - Background job không block main thread
+   - Chạy mỗi 1 giây (configurable)
+
+
+╔═══════════════════════════════════════════════════════════════════════════════════════╗
+║                         DATABASE SCHEMA                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════════════╝
+
+Messages Table (Event Store):
+┌──────────────┬──────────────────────────────────────────────────────────────┐
+│ Column       │ Description                                                  │
+├──────────────┼──────────────────────────────────────────────────────────────┤
+│ Id           │ Primary Key (bigint, auto-increment)                         │
+│ Type         │ Event type (string) - Full class name                        │
+│ Payload      │ Event data (JSON string)                                     │
+│ CreatedAt    │ Timestamp khi event được tạo                                 │
+│ ProcessedAt  │ Timestamp khi event được publish (NULL = chưa xử lý)         │
+│ RetryCount   │ Số lần retry (0-5)                                           │
+│ LastRetryAt  │ Timestamp của lần retry cuối                                 │
+└──────────────┴──────────────────────────────────────────────────────────────┘
+
+Example Data:
+┌────┬─────────────────────────────────────┬──────────────────────┬─────────────────────┬─────────────┬────────────┬─────────────┐
+│ Id │ Type                                │ Payload              │ CreatedAt           │ ProcessedAt │ RetryCount │ LastRetryAt │
+├────┼─────────────────────────────────────┼──────────────────────┼─────────────────────┼─────────────┼────────────┼─────────────┤
+│ 1  │ PolicyService.Events.PolicyCreated  │ {"policyNumber":...} │ 2026-04-11 10:00:00 │ NULL        │ 0          │ NULL        │
+└────┴─────────────────────────────────────┴──────────────────────┴─────────────────────┴─────────────┴────────────┴─────────────┘
+                                                                                          ↑
+                                                                                    Chưa xử lý
+
+After processing:
+┌────┬──────┬─────────┬───────────┬─────────────┬────────────┬─────────────┐
+│ Id │ Type │ Payload │ CreatedAt │ ProcessedAt │ RetryCount │ LastRetryAt │
+├────┼──────┼─────────┼───────────┼─────────────┼────────────┼─────────────┤
+│    │      │         │           │             │            │             │
+└────┴──────┴─────────┴───────────┴─────────────┴────────────┴─────────────┘
+                                                    ↑
+                                              Đã xóa (empty)
+
+
+╔═══════════════════════════════════════════════════════════════════════════════════════╗
+║                         TESTING COMMANDS                                              ║
+╚═══════════════════════════════════════════════════════════════════════════════════════╝
+
+# 1. Tạo policy
+curl -X POST http://localhost:5002/api/policy/create \
+  -H "Content-Type: application/json" \
+  -d '{"customerName": "Test Outbox"}'
+
+# 2. Xem Messages table (NHANH - trong 1 giây)
+docker exec postgres psql -U postgres -d ChatServiceDb -c \
+  "SELECT * FROM \"Messages\" WHERE \"ProcessedAt\" IS NULL;"
+
+# 3. Đợi 2 giây
+sleep 2
+
+# 4. Xem Messages table (should be empty)
+docker exec postgres psql -U postgres -d ChatServiceDb -c \
+  "SELECT COUNT(*) FROM \"Messages\";"
+
+# 5. Xem logs
+docker logs chatservice --tail 30 | grep -i "outbox\|published\|deleted"
+
+# 6. Xem RabbitMQ queues
+docker exec rabbitmq rabbitmqctl list_queues name messages
+
+
+╔═══════════════════════════════════════════════════════════════════════════════════════╗
+║                         END OF DIAGRAM                                                ║
+╚═══════════════════════════════════════════════════════════════════════════════════════╝

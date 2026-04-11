@@ -1,146 +1,68 @@
 {
   "Routes": [
     {
-      "DownstreamPathTemplate": "/api/auth/{everything}",
+      "DownstreamPathTemplate": "/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "localhost",
-          "Port": 5060
-        }
-      ],
-      "UpstreamPathTemplate": "/auth/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST" ],
-      "RateLimitOptions": {
-        "EnableRateLimiting": true,
-        "Period": "1m",
-        "Limit": 10,
-        "PeriodTimespan": 60
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/pricing",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
+          "Host": "authservice",
           "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/pricing",
-      "UpstreamHttpMethod": [ "GET" ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer"
-      },
-      "FileCacheOptions": {
-        "TtlSeconds": 30,
-        "Region": "pricing"
-      },
-      "RateLimitOptions": {
-        "EnableRateLimiting": true,
-        "Period": "1s",
-        "Limit": 5,
-        "PeriodTimespan": 1
-      }
+      "UpstreamPathTemplate": "/auth-service/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST" ]
     },
     {
-      "DownstreamPathTemplate": "/api/pricing/{id}",
+      "DownstreamPathTemplate": "/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "localhost",
+          "Host": "policyservice",
           "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/pricing/{id}",
-      "UpstreamHttpMethod": [ "GET" ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer"
-      },
-      "FileCacheOptions": {
-        "TtlSeconds": 60,
-        "Region": "pricing-details"
-      },
-      "RateLimitOptions": {
-        "EnableRateLimiting": true,
-        "Period": "1s",
-        "Limit": 3,
-        "PeriodTimespan": 1
-      }
+      "UpstreamPathTemplate": "/policy-service/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
     },
     {
-      "DownstreamPathTemplate": "/api/pricing",
+      "DownstreamPathTemplate": "/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "localhost",
+          "Host": "chatservice",
           "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/pricing",
-      "UpstreamHttpMethod": [ "POST" ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer"
-      },
-      "RateLimitOptions": {
-        "EnableRateLimiting": true,
-        "Period": "1m",
-        "Limit": 20,
-        "PeriodTimespan": 60
-      }
+      "UpstreamPathTemplate": "/chat-service/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
     },
     {
-      "DownstreamPathTemplate": "/api/pricing/{id}",
+      "DownstreamPathTemplate": "/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "localhost",
+          "Host": "paymentservice",
           "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/pricing/{id}",
-      "UpstreamHttpMethod": [ "PUT" ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer"
-      },
-      "RateLimitOptions": {
-        "EnableRateLimiting": true,
-        "Period": "1m",
-        "Limit": 15,
-        "PeriodTimespan": 60
-      }
+      "UpstreamPathTemplate": "/payment-service/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ]
     },
     {
-      "DownstreamPathTemplate": "/api/pricing/{id}",
+      "DownstreamPathTemplate": "/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "localhost",
+          "Host": "pricingservice",
           "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/pricing/{id}",
-      "UpstreamHttpMethod": [ "DELETE" ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer"
-      },
-      "RateLimitOptions": {
-        "EnableRateLimiting": true,
-        "Period": "1m",
-        "Limit": 5,
-        "PeriodTimespan": 60
-      }
+      "UpstreamPathTemplate": "/pricing-service/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
     }
   ],
 
   "GlobalConfiguration": {
-    "BaseUrl": "http://localhost:5050",
-
-    "RateLimitOptions": {
-      "ClientIdHeader": "ClientId",
-      "QuotaExceededMessage": "Rate limit exceeded. Please try again later.",
-      "HttpStatusCode": 429,
-      "DisableRateLimitHeaders": false
-    }
+    "BaseUrl": "http://localhost:8080"
   }
 }
